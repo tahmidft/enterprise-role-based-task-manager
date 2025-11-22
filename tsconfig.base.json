@@ -16,6 +16,10 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",
-    "customConditions": ["@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/source"]
+    "baseUrl": ".",
+    "customConditions": ["@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/source"],
+    "paths": {
+      "@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/data": ["data/src/index.ts"]
+    }
   }
 }

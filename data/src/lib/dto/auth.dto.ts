@@ -1,37 +1,47 @@
-import { IsEmail, IsNotEmpty, MinLength, IsNumber } from 'class-validator';
+import { IsEmail, IsNotEmpty, MinLength, IsString } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsNotEmpty()
   @MinLength(6)
-  password: string;
+  password!: string;
 }
 
 export class RegisterDto {
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsNotEmpty()
   @MinLength(6)
-  password: string;
+  password!: string;
 
   @IsNotEmpty()
-  @IsNumber()
-  roleId: number;
+  @IsString()
+  firstName!: string;
 
   @IsNotEmpty()
-  @IsNumber()
-  organizationId: number;
+  @IsString()
+  lastName!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  roleId!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  organizationId!: string;
 }
 
 export class AuthResponseDto {
-  access_token: string;
-  user: {
-    id: number;
+  token!: string;
+  user!: {
+    id: string;
     email: string;
-    role: string;
-    organizationId: number;
+    firstName: string;
+    lastName: string;
+    roleId: string;
+    organizationId: string;
   };
 }

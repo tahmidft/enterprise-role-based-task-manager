@@ -12,7 +12,7 @@ export class User {
   email: string;
 
   @Column()
-  password: string; // Will be hashed with bcrypt
+  password: string;
 
   @Column()
   firstName: string;
@@ -21,19 +21,19 @@ export class User {
   lastName: string;
 
   @ManyToOne(() => Role, (role) => role.users)
-  role: Role;
+  role: any; // Changed to any
 
   @Column()
   roleId: string;
 
   @ManyToOne(() => Organization)
-  organization: Organization;
+  organization: any; // Changed to any
 
   @Column()
   organizationId: string;
 
   @OneToMany(() => Task, (task) => task.assignedTo)
-  tasks: Task[];
+  tasks: any[]; // Changed to any[]
 
   @CreateDateColumn()
   createdAt: Date;

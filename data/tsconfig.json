@@ -1,5 +1,11 @@
 {
   "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
+  },
   "files": [],
   "include": [],
   "references": [

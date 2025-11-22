@@ -13,13 +13,13 @@ export class Task {
   description: string;
 
   @Column()
-  status: string; // 'pending', 'in-progress', 'completed'
+  status: string;
 
   @Column()
-  priority: string; // 'low', 'medium', 'high'
+  priority: string;
 
   @ManyToOne(() => User, (user) => user.tasks)
-  assignedTo: User;
+  assignedTo: any; // Changed from User to any to avoid circular dependency
 
   @Column()
   assignedToId: string;
