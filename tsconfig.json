@@ -14,6 +14,9 @@
     },
     {
       "path": "./auth"
+    },
+    {
+      "path": "./dashboard"
     }
   ]
 }

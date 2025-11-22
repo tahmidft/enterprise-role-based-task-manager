@@ -1,7 +1,10 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ],
     "production": [
       "default",
       "!{projectRoot}/.eslintrc.json",
@@ -12,7 +15,9 @@
       "!{projectRoot}/src/test-setup.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
+    "sharedGlobals": [
+      "{workspaceRoot}/.github/workflows/ci.yml"
+    ]
   },
   "nxCloudId": "69211674131e8b3ba621474a",
   "plugins": [
@@ -29,7 +34,9 @@
           "watchDepsName": "watch-deps"
         }
       },
-      "exclude": ["auth/*"]
+      "exclude": [
+        "auth/*"
+      ]
     },
     {
       "plugin": "@nx/webpack/plugin",
@@ -53,11 +60,15 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["api-e2e/**/*"]
+      "exclude": [
+        "api-e2e/**/*"
+      ]
     },
     {
       "plugin": "@nx/js/typescript",
-      "include": ["auth/*"],
+      "include": [
+        "auth/*"
+      ],
       "options": {
         "typecheck": {
           "targetName": "typecheck"
@@ -67,12 +78,19 @@
   ],
   "targetDefaults": {
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "@angular/build:application": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "production",
+        "^production"
+      ]
     }
   },
   "generators": {
@@ -82,5 +100,8 @@
       "style": "css",
       "unitTestRunner": "jest"
     }
+  },
+  "sync": {
+    "applyChanges": true
   }
 }
