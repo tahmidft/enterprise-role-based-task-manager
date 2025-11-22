@@ -1,5 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from './user.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('tasks')
 export class Task {
@@ -18,11 +24,20 @@ export class Task {
   @Column()
   priority: string;
 
-  @ManyToOne(() => User, (user) => user.tasks)
-  assignedTo: any; // Changed from User to any to avoid circular dependency
+  @ManyToOne('User', 'assignedTasks')
+  assignedTo: any;
 
-  @Column()
-  assignedToId: string;
+  @ManyToOne('User', 'createdTasks')
+  createdBy: any;
+
+  @ManyToOne('Organization', 'tasks')
+  organization: any;
+
+  @Column({ type: 'datetime', nullable: true })
+  dueDate: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  completedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

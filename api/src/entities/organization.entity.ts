@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn } from 'typeorm';
 
 @Entity('organizations')
 export class Organization {
@@ -9,11 +9,17 @@ export class Organization {
   name: string;
 
   @Column({ nullable: true })
-  parentId: string | null;
+  industry: string;
 
-  @ManyToOne(() => Organization, (org) => org.children, { nullable: true })
-  parent: Organization | null;
+  @Column({ nullable: true })
+  employeeCount: number;
 
-  @OneToMany(() => Organization, (org) => org.parent)
-  children: Organization[];
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @OneToMany('User', 'organization')
+  users: any[];
+
+  @OneToMany('Task', 'organization')
+  tasks: any[];
 }

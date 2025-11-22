@@ -1,7 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn } from 'typeorm';
-import { Role } from './role.entity';
-import { Organization } from './organization.entity';
-import { Task } from './task.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -10,6 +15,9 @@ export class User {
 
   @Column({ unique: true })
   email: string;
+
+  @Column({ unique: true })
+  username: string;
 
   @Column()
   password: string;
@@ -20,21 +28,21 @@ export class User {
   @Column()
   lastName: string;
 
-  @ManyToOne(() => Role, (role) => role.users)
-  role: any; // Changed to any
+  @ManyToOne('Role', 'users')
+  role: any;
 
-  @Column()
-  roleId: string;
+  @ManyToOne('Organization', 'users')
+  organization: any;
 
-  @ManyToOne(() => Organization)
-  organization: any; // Changed to any
+  @OneToMany('Task', 'assignedTo')
+  assignedTasks: any[];
 
-  @Column()
-  organizationId: string;
-
-  @OneToMany(() => Task, (task) => task.assignedTo)
-  tasks: any[]; // Changed to any[]
+  @OneToMany('Task', 'createdBy')
+  createdTasks: any[];
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

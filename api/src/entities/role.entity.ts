@@ -1,5 +1,4 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { User } from './user.entity';
 
 @Entity('roles')
 export class Role {
@@ -7,11 +6,11 @@ export class Role {
   id: string;
 
   @Column({ unique: true })
-  name: string; // 'admin', 'manager', 'employee'
+  name: string;
 
   @Column('simple-json')
-  permissions: string[]; // ['tasks:create', 'tasks:read', etc.]
+  permissions: string[];
 
-  @OneToMany(() => User, (user) => user.role)
-  users: User[];
+  @OneToMany('User', 'role')
+  users: any[];
 }
