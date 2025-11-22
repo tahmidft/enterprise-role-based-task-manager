@@ -8,19 +8,17 @@ import { JwtStrategy } from './jwt.strategy';
 import { User } from '../entities/user.entity';
 import { Role } from '../entities/role.entity';
 import { Organization } from '../entities/organization.entity';
-import { jwtConstants } from '../config/jwt.config';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Role, Organization]),
     PassportModule,
     JwtModule.register({
-      secret: jwtConstants.secret,
-      signOptions: { expiresIn: jwtConstants.expiresIn },
+      secret: 'your-secret-key-change-in-production',
+      signOptions: { expiresIn: '24h' },
     }),
+    TypeOrmModule.forFeature([User, Role, Organization]),
   ],
-  controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  controllers: [AuthController],
 })
 export class AuthModule {}
