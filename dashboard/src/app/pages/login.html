@@ -24,7 +24,7 @@
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-6">
         <!-- Email Field -->
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">Email address</label>
+          <label for="email-input" class="block text-sm font-medium text-gray-300 mb-2">Email address</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -32,6 +32,7 @@
               </svg>
             </div>
             <input 
+              id="email-input"
               type="email" 
               formControlName="email"
               placeholder="you@example.com"
@@ -45,7 +46,7 @@
 
         <!-- Password Field -->
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+          <label for="password-input" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,6 +54,7 @@
               </svg>
             </div>
             <input 
+              id="password-input"
               type="password" 
               formControlName="password"
               placeholder="••••••••"
@@ -60,28 +62,27 @@
             />
           </div>
           <p *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="text-sm text-red-400 mt-1.5 ml-1">
-            Password must be at least 6 characters
+            Password is required
           </p>
         </div>
 
         <!-- Error Message -->
-        <div *ngIf="errorMessage" class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-          <div class="flex items-center">
-            <svg class="h-5 w-5 text-red-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div *ngIf="errorMessage()" class="p-4 bg-red-900/20 border border-red-500/50 rounded-lg">
+          <p class="text-sm text-red-400 flex items-center">
+            <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p class="text-sm text-red-400">{{ errorMessage }}</p>
-          </div>
+            {{ errorMessage() }}
+          </p>
         </div>
 
         <!-- Submit Button -->
         <button 
-          type="submit" 
-          [disabled]="isLoading || loginForm.invalid"
-          class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg shadow-blue-500/25"
-        >
-          <span *ngIf="!isLoading">Sign in</span>
-          <span *ngIf="isLoading" class="flex items-center justify-center">
+          type="submit"
+          [disabled]="!loginForm.valid || isLoading()"
+          class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl">
+          <span *ngIf="!isLoading()">Sign in</span>
+          <span *ngIf="isLoading()" class="flex items-center justify-center">
             <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -89,17 +90,17 @@
             Signing in...
           </span>
         </button>
-      </form>
 
-      <!-- Sign Up Link -->
-      <div class="mt-6 text-center">
-        <p class="text-gray-400 text-sm">
-          Don't have an account? 
-          <a routerLink="/register" class="text-blue-400 hover:text-blue-300 font-medium ml-1 transition-colors">
-            Create one now
-          </a>
-        </p>
-      </div>
+        <!-- Register Link -->
+        <div class="text-center pt-4">
+          <p class="text-gray-400">
+            Don't have an account?
+            <a routerLink="/register" class="text-blue-400 hover:text-blue-300 font-semibold ml-1 transition-colors">
+              Sign up
+            </a>
+          </p>
+        </div>
+      </form>
     </div>
   </div>
 </div>

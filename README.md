@@ -6,14 +6,15 @@ A full-stack task management application featuring **Role-Based Access Control (
 
 ## 📋 Table of Contents
 
-- [Features](#features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [API Documentation](#api-documentation)
-- [RBAC System](#rbac-system)
-- [Testing Guide](#testing-guide)
-- [Project Structure](#project-structure)
+- [Features](#-features)
+- [Architecture](#%EF%B8%8F-architecture)
+- [Tech Stack](#%EF%B8%8F-tech-stack)
+- [Quick Start](#-quick-start)
+- [API Documentation](#-api-documentation)
+- [RBAC System](#-rbac-system)
+- [Testing Guide](#-testing-guide)
+- [Project Structure](#-project-structure)
+- [Development Time Log](#%EF%B8%8F-development-time-log)
 
 ---
 
@@ -41,33 +42,43 @@ A full-stack task management application featuring **Role-Based Access Control (
 ### NX Monorepo Structure
 ```
 ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/
-├── api/                          # NestJS Backend (Port 3333)
+│
+├── api/                                # NestJS Backend (Port 3333)
 │   └── src/
-│       ├── auth/                 # JWT authentication & guards
-│       │   ├── jwt.strategy.ts   # JWT validation strategy
-│       │   ├── jwt-auth.guard.ts # Route protection
+│       ├── auth/                       # JWT authentication & guards
+│       │   ├── jwt.strategy.ts         # JWT validation strategy
+│       │   ├── jwt-auth.guard.ts       # Route protection
 │       │   ├── permissions.guard.ts
 │       │   ├── permissions.decorator.ts
 │       │   └── current-user.decorator.ts
-│       ├── tasks/                # Task management
+│       │
+│       ├── tasks/                      # Task management
 │       │   ├── tasks.controller.ts
 │       │   └── tasks.service.ts
-│       ├── entities/             # TypeORM entities
+│       │
+│       ├── entities/                   # TypeORM entities
 │       │   ├── user.entity.ts
 │       │   ├── role.entity.ts
 │       │   ├── permission.entity.ts
 │       │   ├── task.entity.ts
 │       │   ├── organization.entity.ts
 │       │   └── audit-log.entity.ts
+│       │
 │       ├── database/
-│       │   └── seeds/            # Database seeding
+│       │   └── seeds/                  # Database seeding
+│       │
 │       ├── services/
-│       │   └── audit.service.ts  # Audit logging
+│       │   └── audit.service.ts        # Audit logging
+│       │
 │       └── controllers/
 │           └── audit.controller.ts
-├── dashboard/                    # Angular Frontend (Port 4200)
-├── data/                         # Shared TypeScript interfaces
-├── taskmanagement.db             # SQLite database
+│
+├── dashboard/                          # Angular Frontend (Port 4200)
+│
+├── data/                               # Shared TypeScript interfaces
+│
+├── taskmanagement.db                   # SQLite database
+│
 └── README.md
 ```
 
@@ -389,18 +400,22 @@ curl -s http://localhost:3333/api/audit-log \
 ### Key Files
 ```
 api/src/
+│
 ├── auth/
 │   ├── jwt.strategy.ts          # Validates JWT & loads user with permissions
 │   ├── permissions.guard.ts     # Checks if user has required permissions
 │   └── auth.service.ts          # Login/register logic
+│
 ├── tasks/
 │   ├── tasks.controller.ts      # Protected routes with @Permissions()
 │   └── tasks.service.ts         # Business logic with org isolation
+│
 ├── entities/
 │   ├── user.entity.ts           # User → Role → Permissions
 │   ├── role.entity.ts           # ManyToMany with Permissions
 │   ├── permission.entity.ts     # Individual permissions
 │   └── audit-log.entity.ts      # Tracks all actions
+│
 └── services/
     └── audit.service.ts         # Logs user actions with metadata
 ```
@@ -555,30 +570,6 @@ For production deployment, implement:
 
 ---
 
-## 👨‍💻 Author
-
-**Farhan Tahmid**  
-Software Engineer | AWS Certified
-
-Built as part of a full-stack coding challenge demonstrating:
-- NestJS backend architecture
-- Role-Based Access Control
-- JWT authentication
-- Audit logging
-- Monorepo management with NX
-
----
-
-## 📄 License
-
-This project is for demonstration purposes.
-
----
-
-**Built with ❤️ using NestJS, Angular, and NX**
-
----
-
 ## ⏱️ Development Time Log
 
 **Total Development Time: 8 hours** (Timeboxed Challenge)
@@ -609,3 +600,26 @@ This project is for demonstration purposes.
 ✅ **Documentation**: Complete README with API docs and testing guide  
 ✅ **Testing**: Manual testing suite with curl commands provided  
 
+---
+
+## 👨‍💻 Author
+
+**Farhan Tahmid**  
+Software Engineer | AWS Certified
+
+Built as part of a full-stack coding challenge demonstrating:
+- NestJS backend architecture
+- Role-Based Access Control
+- JWT authentication
+- Audit logging
+- Monorepo management with NX
+
+---
+
+## 📄 License
+
+This project is for demonstration purposes.
+
+---
+
+**Built with ❤️ using NestJS, Angular, and NX**

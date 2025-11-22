@@ -3,7 +3,15 @@
   "version": "0.0.1",
   "peerDependencies": {
     "@angular/common": "^20.3.0",
-    "@angular/core": "^20.3.0"
+    "@angular/core": "^20.3.0",
+    "@angular/cdk": "^21.0.0",
+    "@angular/forms": "^20.3.0",
+    "@ng-icons/core": "^33.0.0",
+    "@ng-icons/lucide": "^33.0.0",
+    "@spartan-ng/brain": "^0.0.1-alpha.361",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^3.4.0"
   },
   "sideEffects": false
 }

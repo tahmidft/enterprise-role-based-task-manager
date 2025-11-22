@@ -1,19 +1,17 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "{workspaceRoot}/dist/out-tsc",
+    "outDir": "../../dist/out-tsc",
     "declaration": true,
-    "types": ["node"],
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
+    "declarationMap": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "types": []
   },
-  "include": ["src/**/*.ts"],
   "exclude": [
     "jest.config.ts",
     "src/**/*.spec.ts",
-    "src/**/*.test.ts",
-    "eslint.config.js",
-    "eslint.config.cjs",
-    "eslint.config.mjs"
-  ]
+    "src/**/*.test.ts"
+  ],
+  "include": ["src/**/*.ts"]
 }
