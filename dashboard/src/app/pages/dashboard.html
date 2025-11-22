@@ -1,0 +1,108 @@
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <header class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Task Dashboard</h1>
+        <p *ngIf="currentUser()" class="text-sm text-gray-600 dark:text-gray-400">
+          Welcome, {{ currentUser()?.name }} 
+          <span class="px-2 py-1 ml-2 text-xs rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+            {{ getUserRoleName() }}
+          </span>
+        </p>
+      </div>
+      <div class="flex items-center gap-4">
+        <app-theme-toggle />
+        <button 
+          (click)="logout()"
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Your Tasks</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage your tasks and assignments</p>
+        </div>
+        <button 
+          *ngIf="canCreateTasks()"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+        >
+          Create Task
+        </button>
+      </div>
+
+      <div class="p-6">
+        <div *ngIf="isLoading()" class="flex items-center justify-center py-12">
+          <p class="text-gray-600 dark:text-gray-400">Loading tasks...</p>
+        </div>
+
+        <div *ngIf="!isLoading() && tasks().length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+          <p class="text-gray-600 dark:text-gray-400 mb-2">No tasks found</p>
+          <p class="text-sm text-gray-500 dark:text-gray-500">
+            <span *ngIf="canCreateTasks()">Click "Create Task" to add your first task</span>
+            <span *ngIf="!canCreateTasks()">Tasks will appear here when assigned to you</span>
+          </p>
+        </div>
+
+        <div *ngIf="!isLoading() && tasks().length > 0" class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Title</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Priority</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Assigned To</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
+                <th *ngIf="canDeleteTasks()" class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr *ngFor="let task of tasks()" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-4 py-4">
+                  <div class="font-medium text-gray-900 dark:text-white">{{ task.title }}</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400">{{ task.description }}</div>
+                </td>
+                <td class="px-4 py-4">
+                  <span 
+                    class="px-2 py-1 text-xs rounded-full font-medium"
+                    [ngClass]="getStatusBadgeClass(task.status)"
+                  >
+                    {{ task.status }}
+                  </span>
+                </td>
+                <td class="px-4 py-4">
+                  <span 
+                    class="px-2 py-1 text-xs rounded-full font-medium"
+                    [ngClass]="getPriorityBadgeClass(task.priority)"
+                  >
+                    {{ task.priority }}
+                  </span>
+                </td>
+                <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+                  {{ getTaskAssigneeName(task) }}
+                </td>
+                <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+                  {{ task.dueDate ? (task.dueDate | date: 'MMM d, y') : 'No due date' }}
+                </td>
+                <td *ngIf="canDeleteTasks()" class="px-4 py-4">
+                  <button 
+                    (click)="deleteTask(task.id)"
+                    class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

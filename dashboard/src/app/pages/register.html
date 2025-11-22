@@ -1,0 +1,94 @@
+<div class="min-h-screen flex items-center justify-center bg-background p-4">
+  <div hlmCard class="w-full max-w-md">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle class="text-2xl">Create an account</h2>
+      <p hlmCardDescription>Enter your information to get started</p>
+    </div>
+    
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+      <div hlmCardContent class="space-y-4">
+        <div class="space-y-2">
+          <label hlmLabel for="name">Full Name</label>
+          <input 
+            hlmInput 
+            id="name" 
+            type="text" 
+            formControlName="name"
+            placeholder="John Doe"
+            class="w-full"
+          />
+          @if (registerForm.get('name')?.invalid && registerForm.get('name')?.touched) {
+            <p class="text-sm text-destructive">Name must be at least 2 characters</p>
+          }
+        </div>
+
+        <div class="space-y-2">
+          <label hlmLabel for="email">Email</label>
+          <input 
+            hlmInput 
+            id="email" 
+            type="email" 
+            formControlName="email"
+            placeholder="you@example.com"
+            class="w-full"
+          />
+          @if (registerForm.get('email')?.invalid && registerForm.get('email')?.touched) {
+            <p class="text-sm text-destructive">Please enter a valid email</p>
+          }
+        </div>
+
+        <div class="space-y-2">
+          <label hlmLabel for="password">Password</label>
+          <input 
+            hlmInput 
+            id="password" 
+            type="password" 
+            formControlName="password"
+            placeholder="••••••••"
+            class="w-full"
+          />
+          @if (registerForm.get('password')?.invalid && registerForm.get('password')?.touched) {
+            <p class="text-sm text-destructive">Password must be at least 6 characters</p>
+          }
+        </div>
+
+        <div class="space-y-2">
+          <label hlmLabel for="organizationName">Organization Name</label>
+          <input 
+            hlmInput 
+            id="organizationName" 
+            type="text" 
+            formControlName="organizationName"
+            placeholder="Acme Corp"
+            class="w-full"
+          />
+          @if (registerForm.get('organizationName')?.invalid && registerForm.get('organizationName')?.touched) {
+            <p class="text-sm text-destructive">Organization name is required</p>
+          }
+        </div>
+
+        @if (errorMessage) {
+          <div class="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+            <p class="text-sm text-destructive">{{ errorMessage }}</p>
+          </div>
+        }
+      </div>
+
+      <div hlmCardFooter class="flex flex-col space-y-4">
+        <button 
+          hlmBtn 
+          type="submit" 
+          class="w-full"
+          [disabled]="isLoading || registerForm.invalid"
+        >
+          {{ isLoading ? 'Creating account...' : 'Create account' }}
+        </button>
+        
+        <p class="text-sm text-center text-muted-foreground">
+          Already have an account?
+          <a routerLink="/login" class="text-primary hover:underline font-medium">Sign in</a>
+        </p>
+      </div>
+    </form>
+  </div>
+</div>

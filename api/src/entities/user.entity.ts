@@ -1,48 +1,44 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  OneToMany,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Role } from './role.entity';
+import { Organization } from './organization.entity';
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ unique: true })
-  email: string;
-
-  @Column({ unique: true })
-  username: string;
+  email!: string;
 
   @Column()
-  password: string;
+  password!: string;
 
   @Column()
-  firstName: string;
+  name!: string;
 
   @Column()
-  lastName: string;
+  firstName!: string;
 
-  @ManyToOne('Role', 'users')
-  role: any;
+  @Column()
+  lastName!: string;
 
-  @ManyToOne('Organization', 'users')
-  organization: any;
+  @ManyToOne(() => Role, role => role.users, { eager: true })
+  @JoinColumn({ name: 'roleId' })
+  role!: Role;
 
-  @OneToMany('Task', 'assignedTo')
-  assignedTasks: any[];
+  @Column()
+  roleId!: string;
 
-  @OneToMany('Task', 'createdBy')
-  createdTasks: any[];
+  @ManyToOne(() => Organization, org => org.users)
+  @JoinColumn({ name: 'organizationId' })
+  organization!: Organization;
+
+  @Column()
+  organizationId!: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

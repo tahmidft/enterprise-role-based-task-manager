@@ -1,47 +1,51 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { User } from './user.entity';
+import { Organization } from './organization.entity';
 
 @Entity('tasks')
 export class Task {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column()
-  title: string;
+  title!: string;
 
   @Column('text')
-  description: string;
+  description!: string;
 
-  @Column()
-  status: string;
+  @Column({ default: 'pending' })
+  status!: string;
 
-  @Column()
-  priority: string;
-
-  @ManyToOne('User', 'assignedTasks')
-  assignedTo: any;
-
-  @ManyToOne('User', 'createdTasks')
-  createdBy: any;
-
-  @ManyToOne('Organization', 'tasks')
-  organization: any;
+  @Column({ default: 'medium' })
+  priority!: string;
 
   @Column({ type: 'datetime', nullable: true })
-  dueDate: Date;
+  dueDate?: Date;
 
-  @Column({ type: 'datetime', nullable: true })
-  completedAt: Date;
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'assignedToId' })
+  assignedTo?: User;
+
+  @Column({ nullable: true })
+  assignedToId?: string;
+
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'createdById' })
+  createdBy?: User;
+
+  @Column({ nullable: true })
+  createdById?: string;
+
+  @ManyToOne(() => Organization)
+  @JoinColumn({ name: 'organizationId' })
+  organization!: Organization;
+
+  @Column()
+  organizationId!: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

@@ -9,9 +9,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermissions } from '../common/decorators/permissions.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { PermissionsGuard } from '../auth/permissions.guard';
+import { Permissions } from '../auth/permissions.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { TasksService } from './tasks.service';
 import { User } from '../entities/user.entity';
 
@@ -21,25 +21,25 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get()
-  @RequirePermissions('tasks:read')
+  @Permissions('tasks:read')
   findAll(@CurrentUser() user: User) {
     return this.tasksService.findAll(user);
   }
 
   @Get(':id')
-  @RequirePermissions('tasks:read')
+  @Permissions('tasks:read')
   findOne(@Param('id') id: string, @CurrentUser() user: User) {
     return this.tasksService.findOne(id, user);
   }
 
   @Post()
-  @RequirePermissions('tasks:create')
+  @Permissions('tasks:create')
   create(@Body() createTaskDto: any, @CurrentUser() user: User) {
     return this.tasksService.create(createTaskDto, user);
   }
 
   @Put(':id')
-  @RequirePermissions('tasks:update')
+  @Permissions('tasks:update')
   update(
     @Param('id') id: string,
     @Body() updateTaskDto: any,
@@ -49,7 +49,7 @@ export class TasksController {
   }
 
   @Delete(':id')
-  @RequirePermissions('tasks:delete')
+  @Permissions('tasks:delete')
   remove(@Param('id') id: string, @CurrentUser() user: User) {
     return this.tasksService.remove(id, user);
   }

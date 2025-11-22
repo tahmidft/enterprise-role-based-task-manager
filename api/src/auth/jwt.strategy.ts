@@ -9,19 +9,19 @@ import { User } from '../entities/user.entity';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     @InjectRepository(User)
-    private userRepo: Repository<User>,
+    private userRepository: Repository<User>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'your-secret-key-change-in-production',
+      secretOrKey: 'demo-secret-key',
     });
   }
 
   async validate(payload: any) {
-    const user = await this.userRepo.findOne({
+    const user = await this.userRepository.findOne({
       where: { id: payload.sub },
-      relations: ['role', 'organization'],
+      relations: ['role', 'role.permissions', 'organization'],
     });
 
     if (!user) {

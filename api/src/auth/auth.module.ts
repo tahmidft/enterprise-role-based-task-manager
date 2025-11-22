@@ -13,7 +13,7 @@ import { Organization } from '../entities/organization.entity';
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: 'your-secret-key-change-in-production',
+      secret: 'demo-secret-key',
       signOptions: { expiresIn: '24h' },
     }),
     TypeOrmModule.forFeature([User, Role, Organization]),

@@ -1,114 +1,92 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { User } from '../entities/user.entity';
-import { Role } from '../entities/role.entity';
 import { Organization } from '../entities/organization.entity';
-import { LoginDto, RegisterDto, AuthResponseDto } from '../../../data/src/lib/dto/auth.dto';
+import { Role } from '../entities/role.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Organization)
+    private orgRepository: Repository<Organization>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
-    @InjectRepository(Organization)
-    private organizationRepository: Repository<Organization>,
     private jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-    const { email, password, firstName, lastName, roleId, organizationId } = registerDto;
-
-    // Check if user already exists
+  async register(email: string, password: string, name: string, organizationName: string) {
     const existingUser = await this.userRepository.findOne({ where: { email } });
     if (existingUser) {
-      throw new UnauthorizedException('User already exists');
+      throw new ConflictException('User already exists');
     }
 
-    // Verify role and organization exist
-    const role = await this.roleRepository.findOne({ where: { id: roleId } });
-    const organization = await this.organizationRepository.findOne({ where: { id: organizationId } });
+    // Create organization
+    const organization = this.orgRepository.create({ name: organizationName });
+    await this.orgRepository.save(organization);
 
-    if (!role || !organization) {
-      throw new UnauthorizedException('Invalid role or organization');
+    // Get admin role (should exist from seed)
+    const adminRole = await this.roleRepository.findOne({ where: { name: 'admin' } });
+    if (!adminRole) {
+      throw new Error('Admin role not found. Please run seed first.');
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    const nameParts = name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastNameParts = nameParts.slice(1);
+    const lastName = lastNameParts.join(' ') || '';
+
     const user = this.userRepository.create({
       email,
       password: hashedPassword,
+      name,
       firstName,
       lastName,
-      roleId,
-      organizationId,
+      roleId: adminRole.id,
+      organizationId: organization.id,
     });
 
-    await this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
 
-    // Generate JWT token
-    const payload = { sub: user.id, email: user.email, roleId: user.roleId };
-    const token = this.jwtService.sign(payload);
+    const userWithRelations = await this.userRepository.findOne({
+      where: { id: savedUser.id },
+      relations: ['role', 'organization'],
+    });
 
+    const payload = { sub: userWithRelations!.id, email: userWithRelations!.email };
     return {
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        roleId: user.roleId,
-        organizationId: user.organizationId,
-      },
+      access_token: this.jwtService.sign(payload),
+      user: userWithRelations,
     };
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-    const { email, password } = loginDto;
-
-    // Find user with role and organization
+  async login(email: string, password: string) {
     const user = await this.userRepository.findOne({
       where: { email },
-      relations: ['role', 'organization'],
+      relations: ['role', 'role.permissions', 'organization'],
     });
 
-    if (!user) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // Generate JWT token
-    const payload = { sub: user.id, email: user.email, roleId: user.roleId };
-    const token = this.jwtService.sign(payload);
-
+    const payload = { sub: user.id, email: user.email };
     return {
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        roleId: user.roleId,
-        organizationId: user.organizationId,
-      },
+      access_token: this.jwtService.sign(payload),
+      user,
     };
   }
 
-  async validateUser(userId: string): Promise<User | null> {
+  async validateUser(userId: string) {
     return this.userRepository.findOne({
       where: { id: userId },
-      relations: ['role', 'organization'],
+      relations: ['role', 'role.permissions', 'organization'],
     });
   }
 }
