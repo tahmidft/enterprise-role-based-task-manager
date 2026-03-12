@@ -10,6 +10,14 @@ This project implements a multi-tenant task management system with a focus on se
 
 ---
 
+## Screenshots
+
+| Login | Owner Dashboard | Viewer Dashboard |
+|---|---|---|
+| ![Login](docs/login.png) | ![Owner Dashboard](docs/owner-dash.png) | ![Viewer Dashboard](docs/viewer-dash.png) |
+
+---
+
 ## Table of Contents
 
 - [Tech Stack](#tech-stack)

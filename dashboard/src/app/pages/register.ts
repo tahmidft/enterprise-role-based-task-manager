@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { AuthService } from '../../../services/auth';
 
 @Component({
   selector: 'app-register',
@@ -16,7 +15,6 @@ export class RegisterComponent {
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
   private router = inject(Router);
-  private authService = inject(AuthService);
 
   registerForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -39,8 +37,8 @@ export class RegisterComponent {
     this.http.post<{ access_token: string; user: unknown }>(`${this.API_URL}/auth/register`, this.registerForm.value)
       .subscribe({
         next: (response) => {
-          this.authService.setToken(response.access_token);
-          this.authService.setUser(response.user);
+          
+          
           this.router.navigate(['/dashboard']);
         },
         error: (error: HttpErrorResponse) => {

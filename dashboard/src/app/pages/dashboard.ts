@@ -3,13 +3,13 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../services/auth';
 import { ThemeToggleComponent } from '../components/theme-toggle';
-import { ITask, IUser, IRole, IPermission } from '@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/data';
+import { IUser, IRole } from '@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/data';
 
 interface UserWithRole extends IUser {
-  role?: IRole & { permissions?: IPermission[] };
+  role?: IRole & { permissions?: { name: string }[] };
 }
 
-interface TaskWithAssignee extends ITask {
+interface TaskWithAssignee {
   assignedTo?: { name?: string };
 }
 
@@ -25,7 +25,7 @@ export class DashboardComponent implements OnInit {
   private authService = inject(AuthService);
 
   currentUser = signal<UserWithRole | null>(null);
-  tasks = signal<TaskWithAssignee[]>([]);
+  tasks = signal<any[]>([]);
   isLoading = signal(true);
   canCreateTasks = signal(false);
   canDeleteTasks = signal(false);
@@ -54,7 +54,7 @@ export class DashboardComponent implements OnInit {
   checkPermissions(): void {
     const user = this.currentUser();
     if (user?.role?.permissions) {
-      const permissionNames = user.role.permissions.map(p => p.name || '');
+      const permissionNames = user.role.permissions.map((p: any) => p.name || '');
       this.canCreateTasks.set(permissionNames.includes('tasks:create'));
       this.canDeleteTasks.set(permissionNames.includes('tasks:delete'));
     }
