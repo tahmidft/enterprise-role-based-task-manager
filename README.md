@@ -1,453 +1,207 @@
-# 🔐 Secure Task Management System with RBAC
+# Secure Task Management System with RBAC
 
-A full-stack task management application featuring **Role-Based Access Control (RBAC)**, **JWT authentication**, and **comprehensive audit logging** built with NestJS, Angular, and SQLite.
-
----
-
-## 📋 Table of Contents
-
-- [Features](#-features)
-- [Architecture](#%EF%B8%8F-architecture)
-- [Tech Stack](#%EF%B8%8F-tech-stack)
-- [Quick Start](#-quick-start)
-- [API Documentation](#-api-documentation)
-- [RBAC System](#-rbac-system)
-- [Testing Guide](#-testing-guide)
-- [Project Structure](#-project-structure)
-- [Development Time Log](#%EF%B8%8F-development-time-log)
+A full-stack task management application with Role-Based Access Control (RBAC), JWT authentication, and audit logging, built with NestJS, Angular, and SQLite.
 
 ---
 
-## ✨ Features
+## Overview
 
-### Core Functionality
-- ✅ **JWT Authentication** - Secure login with bcrypt password hashing
-- ✅ **Role-Based Access Control (RBAC)** - 3 roles with granular permissions
-- ✅ **Task Management** - Full CRUD operations with organization isolation
-- ✅ **Audit Logging** - Complete tracking of all system actions
-- ✅ **Organization Isolation** - Multi-tenant architecture
-- ✅ **Permission Guards** - Decorator-based authorization
-
-### Security Features
-- 🔒 Password hashing with bcrypt
-- 🔐 JWT tokens with 24-hour expiration
-- 🛡️ Permission-based route protection
-- 📝 Comprehensive audit trail
-- 🏢 Organization-level data isolation
+This project implements a multi-tenant task management system with a focus on security and authorization. The backend enforces granular, permission-based access control at the route level using NestJS guards and custom decorators. Every user action is recorded in an audit log with IP address, user agent, and metadata — accessible only to privileged roles.
 
 ---
 
-## 🏗️ Architecture
+## Table of Contents
+
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [RBAC System](#rbac-system)
+- [API Reference](#api-reference)
+- [Implementation Details](#implementation-details)
+- [Database Schema](#database-schema)
+- [Testing Guide](#testing-guide)
+- [Production Considerations](#production-considerations)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | NestJS 10, TypeORM, Passport JWT, bcrypt |
+| Frontend | Angular 18, TailwindCSS |
+| Database | SQLite |
+| Build System | NX 19 Monorepo |
+| Language | TypeScript |
+
+---
+
+## Architecture
 
 ### NX Monorepo Structure
+
 ```
-ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/
-│
 ├── api/                                # NestJS Backend (Port 3333)
 │   └── src/
 │       ├── auth/                       # JWT authentication & guards
-│       │   ├── jwt.strategy.ts         # JWT validation strategy
-│       │   ├── jwt-auth.guard.ts       # Route protection
+│       │   ├── jwt.strategy.ts
+│       │   ├── jwt-auth.guard.ts
 │       │   ├── permissions.guard.ts
 │       │   ├── permissions.decorator.ts
 │       │   └── current-user.decorator.ts
-│       │
-│       ├── tasks/                      # Task management
+│       ├── tasks/
 │       │   ├── tasks.controller.ts
 │       │   └── tasks.service.ts
-│       │
-│       ├── entities/                   # TypeORM entities
+│       ├── entities/
 │       │   ├── user.entity.ts
 │       │   ├── role.entity.ts
 │       │   ├── permission.entity.ts
 │       │   ├── task.entity.ts
 │       │   ├── organization.entity.ts
 │       │   └── audit-log.entity.ts
-│       │
-│       ├── database/
-│       │   └── seeds/                  # Database seeding
-│       │
-│       ├── services/
-│       │   └── audit.service.ts        # Audit logging
-│       │
-│       └── controllers/
-│           └── audit.controller.ts
-│
+│       ├── database/seeds/
+│       └── services/
+│           └── audit.service.ts
 ├── dashboard/                          # Angular Frontend (Port 4200)
-│
 ├── data/                               # Shared TypeScript interfaces
-│
-├── taskmanagement.db                   # SQLite database
-│
 └── README.md
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Quick Start
 
-### Backend
-- **NestJS 10** - Progressive Node.js framework
-- **TypeORM** - ORM with SQLite
-- **Passport JWT** - JWT authentication
-- **bcrypt** - Password hashing
+**Prerequisites:** Node.js 18+, npm
 
-### Frontend
-- **Angular 18** - Modern web framework
-- **TailwindCSS** - Utility-first CSS
-
-### Development
-- **NX 19** - Monorepo build system
-- **TypeScript** - Type safety
-- **SQLite** - Embedded database
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+
-- npm
-
-### Installation
 ```bash
-# 1. Install dependencies
+# Install dependencies
 npm install
 
-# 2. Start the backend API
+# Start the backend API (http://localhost:3333/api)
 npx nx serve api
-# API runs at: http://localhost:3333/api
 
-# 3. Seed the database (in a new terminal)
+# Seed the database (new terminal)
 curl -X POST http://localhost:3333/api/seed
 
-# 4. Start the frontend (optional)
+# Start the frontend (http://localhost:4200)
 npx nx serve dashboard
-# Frontend runs at: http://localhost:4200
 ```
 
-### Test Login Credentials
+### Test Credentials
 
-| Role   | Email                    | Password     | Permissions                        |
-|--------|--------------------------|--------------|-------------------------------------|
-| Owner  | owner@techcorp.com       | password123  | Full system access + user mgmt      |
-| Admin  | admin@techcorp.com       | password123  | Task CRUD + most operations         |
-| Viewer | viewer@techcorp.com      | password123  | Read-only (assigned tasks only)     |
+| Role | Email | Password | Access |
+|---|---|---|---|
+| Owner | owner@techcorp.com | password123 | Full system access + user management |
+| Admin | admin@techcorp.com | password123 | Task CRUD + audit logs |
+| Viewer | viewer@techcorp.com | password123 | Read-only, assigned tasks only |
 
 ---
 
-## 📡 API Documentation
-
-### Base URL
-```
-http://localhost:3333/api
-```
-
-### Authentication
-
-#### Login
-```bash
-POST /auth/login
-Content-Type: application/json
-
-{
-  "email": "owner@techcorp.com",
-  "password": "password123"
-}
-
-Response:
-{
-  "access_token": "eyJhbGc...",
-  "user": {
-    "id": "uuid",
-    "email": "owner@techcorp.com",
-    "role": { "name": "owner", "permissions": [...] }
-  }
-}
-```
-
-#### Register
-```bash
-POST /auth/register
-Content-Type: application/json
-
-{
-  "email": "newuser@company.com",
-  "password": "securepass123",
-  "name": "John Doe",
-  "organizationName": "My Company"
-}
-```
-
-### Tasks
-
-All endpoints require: `Authorization: Bearer <token>`
-
-#### List Tasks
-```bash
-GET /tasks
-
-# Owner/Admin: See all organization tasks
-# Viewer: Only sees assigned tasks
-```
-
-#### Get Single Task
-```bash
-GET /tasks/:id
-```
-
-#### Create Task
-```bash
-POST /tasks
-Content-Type: application/json
-
-{
-  "title": "Implement feature X",
-  "description": "Build new feature",
-  "status": "pending",
-  "priority": "high",
-  "dueDate": "2025-12-31"
-}
-
-# Requires: tasks:create permission
-```
-
-#### Update Task
-```bash
-PUT /tasks/:id
-Content-Type: application/json
-
-{
-  "status": "in-progress",
-  "priority": "medium"
-}
-
-# Requires: tasks:update permission
-```
-
-#### Delete Task
-```bash
-DELETE /tasks/:id
-
-# Requires: tasks:delete permission
-```
-
-### Audit Logs
-```bash
-GET /audit-log
-
-# Requires: audit:read permission (Owner/Admin only)
-# Returns: Last 100 audit entries for the organization
-```
-
-### Error Responses
-```json
-// 401 Unauthorized
-{
-  "statusCode": 401,
-  "message": "Unauthorized"
-}
-
-// 403 Forbidden
-{
-  "statusCode": 403,
-  "message": "You need the following permissions: tasks:create",
-  "error": "Forbidden"
-}
-
-// 404 Not Found
-{
-  "statusCode": 404,
-  "message": "Task not found"
-}
-```
-
----
-
-## 🔐 RBAC System
+## RBAC System
 
 ### Role Hierarchy
+
 ```
 ┌─────────────────────────────────────────────────┐
 │                    OWNER                        │
-│  ✓ All Permissions                              │
-│  ✓ User Management (create, read, update, del) │
-│  ✓ Audit Log Access                             │
-│  ✓ Task Management (full CRUD)                  │
+│  + All Permissions                              │
+│  + User Management (create, read, update, del) │
+│  + Audit Log Access                             │
+│  + Task Management (full CRUD)                  │
 └─────────────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
 │                    ADMIN                        │
-│  ✓ Task Management (full CRUD)                  │
-│  ✓ User Management (create, read, update)       │
-│  ✓ Audit Log Access                             │
-│  ✗ Cannot delete users                          │
+│  + Task Management (full CRUD)                  │
+│  + User Management (create, read, update)       │
+│  + Audit Log Access                             │
+│  - Cannot delete users                          │
 └─────────────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
 │                   VIEWER                        │
-│  ✓ Read assigned tasks only                     │
-│  ✓ Read user information (limited)              │
-│  ✗ Cannot create, update, or delete             │
-│  ✗ Cannot access audit logs                     │
+│  + Read assigned tasks only                     │
+│  - Cannot create, update, or delete             │
+│  - Cannot access audit logs                     │
 └─────────────────────────────────────────────────┘
 ```
 
 ### Permission Matrix
 
-| Permission     | Owner | Admin | Viewer |
-|----------------|-------|-------|--------|
-| tasks:create   | ✅    | ✅    | ❌     |
-| tasks:read     | ✅    | ✅    | ✅*    |
-| tasks:update   | ✅    | ✅    | ❌     |
-| tasks:delete   | ✅    | ✅    | ❌     |
-| users:create   | ✅    | ✅    | ❌     |
-| users:read     | ✅    | ✅    | ✅*    |
-| users:update   | ✅    | ✅    | ❌     |
-| users:delete   | ✅    | ❌    | ❌     |
-| audit:read     | ✅    | ✅    | ❌     |
+| Permission | Owner | Admin | Viewer |
+|---|---|---|---|
+| tasks:create | Yes | Yes | No |
+| tasks:read | Yes | Yes | Assigned only |
+| tasks:update | Yes | Yes | No |
+| tasks:delete | Yes | Yes | No |
+| users:create | Yes | Yes | No |
+| users:read | Yes | Yes | Limited |
+| users:update | Yes | Yes | No |
+| users:delete | Yes | No | No |
+| audit:read | Yes | Yes | No |
 
-\* *Viewer can only read their own assigned tasks and limited user info*
+### Authorization Flow
 
-### How RBAC Works
-
-1. **User Login** → JWT token issued containing user ID
-2. **Token Validation** → JWT strategy loads user with role & permissions
-3. **Route Access** → Guards check if user has required permissions
-4. **Action Performed** → Audit log records the action
-5. **Data Isolation** → Only organization's data is accessible
+1. User authenticates → JWT issued containing user ID
+2. On each request, JWT strategy loads user with role and permissions
+3. `PermissionsGuard` checks the required permission against the user's role
+4. On success, the action is recorded in the audit log with full metadata
+5. Data queries are scoped to the user's organization
 
 ---
 
-## 🧪 Testing Guide
+## API Reference
 
-### Complete Test Suite
+**Base URL:** `http://localhost:3333/api`
+
+All task and audit endpoints require `Authorization: Bearer <token>`.
+
+### Auth
+
 ```bash
-# 1. Seed database
-curl -X POST http://localhost:3333/api/seed
-
-# 2. Login as Owner
-TOKEN=$(curl -s -X POST http://localhost:3333/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"owner@techcorp.com","password":"password123"}' \
-  | jq -r '.access_token')
-
-# 3. List all tasks (Owner sees all)
-curl -s http://localhost:3333/api/tasks \
-  -H "Authorization: Bearer $TOKEN" | jq
-
-# 4. Create a task
-curl -s -X POST http://localhost:3333/api/tasks \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Test Task",
-    "description": "Testing RBAC",
-    "status": "pending",
-    "priority": "high"
-  }' | jq
-
-# 5. View audit logs (Owner only)
-curl -s http://localhost:3333/api/audit-log \
-  -H "Authorization: Bearer $TOKEN" | jq
-
-# 6. Test Viewer (Read-Only)
-VIEWER_TOKEN=$(curl -s -X POST http://localhost:3333/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"viewer@techcorp.com","password":"password123"}' \
-  | jq -r '.access_token')
-
-# Viewer can read (only assigned tasks)
-curl -s http://localhost:3333/api/tasks \
-  -H "Authorization: Bearer $VIEWER_TOKEN" | jq
-
-# Viewer CANNOT create (403 Forbidden)
-curl -s -X POST http://localhost:3333/api/tasks \
-  -H "Authorization: Bearer $VIEWER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Should Fail"}' | jq
-
-# Viewer CANNOT access audit logs (403 Forbidden)
-curl -s http://localhost:3333/api/audit-log \
-  -H "Authorization: Bearer $VIEWER_TOKEN" | jq
+POST /auth/login
+POST /auth/register
 ```
 
-### Expected Results
+### Tasks
 
-✅ **Owner**:
-- Can create tasks
-- Can view all organization tasks
-- Can access audit logs
-- Full system access
-
-✅ **Admin**:
-- Can create/update/delete tasks
-- Can view audit logs
-- Cannot delete users
-
-✅ **Viewer**:
-- Can only read assigned tasks
-- **Blocked** from creating tasks (403)
-- **Blocked** from audit logs (403)
-- Read-only access
-
----
-
-## 📂 Project Structure
-
-### Key Files
+```bash
+GET    /tasks          # Owner/Admin: all org tasks | Viewer: assigned only
+GET    /tasks/:id
+POST   /tasks          # Requires tasks:create
+PUT    /tasks/:id      # Requires tasks:update
+DELETE /tasks/:id      # Requires tasks:delete
 ```
-api/src/
-│
-├── auth/
-│   ├── jwt.strategy.ts          # Validates JWT & loads user with permissions
-│   ├── permissions.guard.ts     # Checks if user has required permissions
-│   └── auth.service.ts          # Login/register logic
-│
-├── tasks/
-│   ├── tasks.controller.ts      # Protected routes with @Permissions()
-│   └── tasks.service.ts         # Business logic with org isolation
-│
-├── entities/
-│   ├── user.entity.ts           # User → Role → Permissions
-│   ├── role.entity.ts           # ManyToMany with Permissions
-│   ├── permission.entity.ts     # Individual permissions
-│   └── audit-log.entity.ts      # Tracks all actions
-│
-└── services/
-    └── audit.service.ts         # Logs user actions with metadata
+
+### Audit Logs
+
+```bash
+GET /audit-log         # Requires audit:read (Owner/Admin only)
+                       # Returns last 100 entries for the organization
+```
+
+### Error Responses
+
+```json
+{ "statusCode": 401, "message": "Unauthorized" }
+{ "statusCode": 403, "message": "You need the following permissions: tasks:create" }
+{ "statusCode": 404, "message": "Task not found" }
 ```
 
 ---
 
-## 🔍 Key Implementation Details
-
-### JWT Authentication Flow
-```typescript
-// 1. User logs in
-POST /auth/login → validates credentials
-
-// 2. JWT token issued
-{ sub: userId, email, iat, exp }
-
-// 3. On each request
-JWT Strategy → loads user with:
-- relations: ['role', 'role.permissions', 'organization']
-
-// 4. Guards check permissions
-@Permissions('tasks:create')
-→ PermissionsGuard validates user has permission
-```
+## Implementation Details
 
 ### Permission Guard
+
 ```typescript
 @Controller('tasks')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class TasksController {
   @Get()
-  @Permissions('tasks:read')  // Only users with tasks:read can access
+  @Permissions('tasks:read')
   findAll(@CurrentUser() user: User) {
     return this.tasksService.findAll(user);
   }
@@ -455,26 +209,27 @@ export class TasksController {
 ```
 
 ### Organization Isolation
+
 ```typescript
-// Viewer only sees assigned tasks
+// Viewers see only their assigned tasks
 if (user.role.name === 'viewer') {
   return this.taskRepo.find({
-    where: { 
+    where: {
       assignedToId: user.id,
-      organizationId: user.organizationId  // Org boundary
+      organizationId: user.organizationId
     }
   });
 }
 
-// Owner/Admin see all org tasks
+// Owners and Admins see all org tasks
 return this.taskRepo.find({
   where: { organizationId: user.organizationId }
 });
 ```
 
 ### Audit Logging
+
 ```typescript
-// Every action is logged
 await this.auditService.log({
   action: 'task:create',
   resource: 'task',
@@ -488,138 +243,81 @@ await this.auditService.log({
 
 ---
 
-## 📊 Database Schema
+## Database Schema
+
 ```sql
--- Organizations
-organizations (id, name, description, createdAt, updatedAt)
-
--- Roles with Permissions
-roles (id, name, description)
-permissions (id, name, description)
+organizations    (id, name, description, createdAt, updatedAt)
+roles            (id, name, description)
+permissions      (id, name, description)
 role_permissions (roleId, permissionId)
-
--- Users
-users (id, email, password, name, firstName, lastName, roleId, organizationId)
-
--- Tasks
-tasks (id, title, description, status, priority, dueDate, 
-       assignedToId, createdById, organizationId)
-
--- Audit Logs
-audit_logs (id, action, resource, resourceId, userId, 
-            ipAddress, userAgent, metadata, createdAt)
+users            (id, email, password, name, roleId, organizationId)
+tasks            (id, title, description, status, priority, dueDate, assignedToId, createdById, organizationId)
+audit_logs       (id, action, resource, resourceId, userId, ipAddress, userAgent, metadata, createdAt)
 ```
 
 ---
 
-## 🎯 Challenge Requirements Met
+## Testing Guide
 
-✅ **Authentication**
-- JWT-based authentication with bcrypt
-- Login/Register endpoints
-- Token validation on every request
+```bash
+# Seed the database
+curl -X POST http://localhost:3333/api/seed
 
-✅ **Authorization (RBAC)**
-- 3 roles: Owner, Admin, Viewer
-- 9 granular permissions
-- Permission-based route guards
-- Role hierarchy enforced
+# Login as Owner and capture token
+TOKEN=$(curl -s -X POST http://localhost:3333/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@techcorp.com","password":"password123"}' \
+  | jq -r '.access_token')
 
-✅ **Task Management**
-- Full CRUD operations
-- Organization-level isolation
-- Role-based data filtering
+# List all tasks
+curl -s http://localhost:3333/api/tasks -H "Authorization: Bearer $TOKEN" | jq
 
-✅ **Audit Logging**
-- Tracks all system actions
-- Records user, IP, timestamp
-- Accessible by Owner/Admin only
+# Create a task
+curl -s -X POST http://localhost:3333/api/tasks \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Test Task","status":"pending","priority":"high"}' | jq
 
-✅ **Security**
-- Password hashing with bcrypt
-- JWT expiration (24h)
-- Permission validation
-- Organization boundaries
+# View audit logs
+curl -s http://localhost:3333/api/audit-log -H "Authorization: Bearer $TOKEN" | jq
 
----
+# Test Viewer restrictions
+VIEWER_TOKEN=$(curl -s -X POST http://localhost:3333/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"viewer@techcorp.com","password":"password123"}' \
+  | jq -r '.access_token')
 
-## 🚀 Production Considerations
+# Returns 403 — Viewer cannot create tasks
+curl -s -X POST http://localhost:3333/api/tasks \
+  -H "Authorization: Bearer $VIEWER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Should Fail"}' | jq
 
-For production deployment, implement:
-
-1. **Environment Variables**
-   - Move JWT secret to `.env`
-   - Configure database connection
-   - Set proper CORS origins
-
-2. **Security Enhancements**
-   - Implement refresh tokens
-   - Add rate limiting
-   - Enable HTTPS only
-   - Add CSRF protection
-
-3. **Database**
-   - Migrate to PostgreSQL/MySQL
-   - Add connection pooling
-   - Implement proper migrations
-
-4. **Monitoring**
-   - Add application logging
-   - Implement error tracking
-   - Monitor audit logs
+# Returns 403 — Viewer cannot access audit logs
+curl -s http://localhost:3333/api/audit-log -H "Authorization: Bearer $VIEWER_TOKEN" | jq
+```
 
 ---
 
-## ⏱️ Development Time Log
+## Production Considerations
 
-**Total Development Time: 8 hours** (Timeboxed Challenge)
-
-### Time Breakdown by Component
-
-| Component                          | Time Spent | Notes                                      |
-|-----------------------------------|------------|--------------------------------------------|
-| **Project Setup & Configuration** | 1.0 hours  | NX monorepo, TypeORM, dependencies        |
-| **Database Design & Entities**    | 1.5 hours  | 6 entities with relations, schema design  |
-| **Authentication (JWT)**          | 1.0 hours  | Login/register, bcrypt, JWT strategy      |
-| **RBAC System**                   | 1.5 hours  | Guards, decorators, permission logic      |
-| **Task Management API**           | 1.0 hours  | CRUD operations, controllers, services    |
-| **Audit Logging**                 | 0.5 hours  | Audit service, logging implementation     |
-| **Database Seeding**              | 0.5 hours  | Seed data, test users, organizations      |
-| **Testing & Debugging**           | 1.0 hours  | API testing, bug fixes, RBAC validation   |
-
-**Total:** 8.0 hours
+- Replace SQLite with PostgreSQL and add connection pooling
+- Move JWT secret and config to environment variables
+- Implement refresh token rotation
+- Add rate limiting and CSRF protection
+- Set up structured application logging and error tracking
 
 ---
 
-### Key Deliverables
+## Author
 
-✅ **Backend API**: Fully functional NestJS REST API with 8 endpoints  
-✅ **Authentication**: JWT-based auth with bcrypt password hashing  
-✅ **Authorization**: Complete RBAC with 3 roles and 9 permissions  
-✅ **Audit System**: Comprehensive logging of all user actions  
-✅ **Documentation**: Complete README with API docs and testing guide  
-✅ **Testing**: Manual testing suite with curl commands provided  
+**Farhan Tahmid** — Software Engineer
+
+[GitHub](https://github.com/tahmidft)
 
 ---
 
-## 👨‍💻 Author
-
-**Farhan Tahmid**  
-Software Engineer | AWS Certified
-
-Built as part of a full-stack coding challenge demonstrating:
-- NestJS backend architecture
-- Role-Based Access Control
-- JWT authentication
-- Audit logging
-- Monorepo management with NX
-
----
-
-## 📄 License
+## License
 
 This project is for demonstration purposes.
 
----
-
-**Built with ❤️ using NestJS, Angular, and NX**
