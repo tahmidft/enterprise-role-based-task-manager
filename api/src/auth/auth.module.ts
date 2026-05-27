@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule, type JwtSignOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
@@ -12,9 +13,16 @@ import { Organization } from '../entities/organization.entity';
 @Module({
   imports: [
     PassportModule,
-    JwtModule.register({
-      secret: 'demo-secret-key',
-      signOptions: { expiresIn: '24h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const expiresIn = (configService.get<string>('JWT_EXPIRATION') ?? '24h') as JwtSignOptions['expiresIn'];
+        return {
+          secret: configService.getOrThrow<string>('JWT_SECRET'),
+          signOptions: { expiresIn },
+        };
+      },
     }),
     TypeOrmModule.forFeature([User, Role, Organization]),
   ],
