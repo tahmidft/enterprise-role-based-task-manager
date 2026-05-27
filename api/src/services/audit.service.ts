@@ -18,7 +18,7 @@ export class AuditService {
     user?: User;
     ipAddress: string;
     userAgent: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<void> {
     const log = this.auditRepo.create({
       action: data.action,
@@ -31,17 +31,6 @@ export class AuditService {
     });
 
     await this.auditRepo.save(log);
-
-    // Also log to console
-    console.log('[AUDIT]', {
-      timestamp: new Date().toISOString(),
-      action: data.action,
-      resource: data.resource,
-      resourceId: data.resourceId,
-      userId: data.user?.id,
-      userEmail: data.user?.email,
-      ip: data.ipAddress,
-    });
   }
 
   async findAll(organizationId: string): Promise<AuditLog[]> {
