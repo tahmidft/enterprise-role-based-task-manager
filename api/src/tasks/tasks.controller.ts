@@ -6,13 +6,14 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { Permissions } from '../auth/permissions.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { TasksService } from './tasks.service';
+import { TasksService, TaskFilters } from './tasks.service';
 import { User } from '../entities/user.entity';
 
 @Controller('tasks')
@@ -22,8 +23,24 @@ export class TasksController {
 
   @Get()
   @Permissions('tasks:read')
-  findAll(@CurrentUser() user: User) {
-    return this.tasksService.findAll(user);
+  findAll(
+    @CurrentUser() user: User,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('search') search?: string,
+  ) {
+    const filters: TaskFilters = {
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      status,
+      priority,
+      assignedTo,
+      search,
+    };
+    return this.tasksService.findAll(user, filters);
   }
 
   @Get(':id')
@@ -34,7 +51,10 @@ export class TasksController {
 
   @Post()
   @Permissions('tasks:create')
-  create(@Body() createTaskDto: any, @CurrentUser() user: User) {
+  create(
+    @Body() createTaskDto: Record<string, unknown>,
+    @CurrentUser() user: User,
+  ) {
     return this.tasksService.create(createTaskDto, user);
   }
 
@@ -42,7 +62,7 @@ export class TasksController {
   @Permissions('tasks:update')
   update(
     @Param('id') id: string,
-    @Body() updateTaskDto: any,
+    @Body() updateTaskDto: Record<string, unknown>,
     @CurrentUser() user: User,
   ) {
     return this.tasksService.update(id, updateTaskDto, user);

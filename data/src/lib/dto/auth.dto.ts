@@ -20,8 +20,8 @@ export class AuthResponseDto {
     lastName: string;
     roleId: string;
     organizationId: string;
-    role?: any;
-    organization?: any;
+    role?: unknown;
+    organization?: unknown;
     createdAt: Date;
     updatedAt: Date;
   };

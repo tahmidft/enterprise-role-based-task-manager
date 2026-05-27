@@ -19,7 +19,7 @@ export class Task {
   @Column({ default: 'medium' })
   priority!: string;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   dueDate?: Date;
 
   @ManyToOne(() => User, { eager: true })

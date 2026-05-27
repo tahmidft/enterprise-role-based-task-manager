@@ -19,175 +19,206 @@ export class SeedService {
   ) {}
 
   async seed() {
-    // Clear existing data using clear() instead of delete({})
-    await this.taskRepo.clear();
-    await this.userRepo.clear();
-    await this.roleRepo.clear();
-    await this.permRepo.clear();
-    await this.orgRepo.clear();
+    // Idempotent seed: upsert stable reference data and only create demo rows if missing.
+    const permissions = [
+      { name: 'tasks:create', description: 'Create tasks' },
+      { name: 'tasks:read', description: 'Read tasks' },
+      { name: 'tasks:update', description: 'Update tasks' },
+      { name: 'tasks:delete', description: 'Delete tasks' },
+      { name: 'users:create', description: 'Create users' },
+      { name: 'users:read', description: 'Read users' },
+      { name: 'users:update', description: 'Update users' },
+      { name: 'users:delete', description: 'Delete users' },
+      { name: 'audit:read', description: 'Read audit logs' },
+    ] as const;
 
-    // Create permissions
-    const taskCreatePerm = this.permRepo.create({ name: 'tasks:create', description: 'Create tasks' });
-    const taskReadPerm = this.permRepo.create({ name: 'tasks:read', description: 'Read tasks' });
-    const taskUpdatePerm = this.permRepo.create({ name: 'tasks:update', description: 'Update tasks' });
-    const taskDeletePerm = this.permRepo.create({ name: 'tasks:delete', description: 'Delete tasks' });
-    const userCreatePerm = this.permRepo.create({ name: 'users:create', description: 'Create users' });
-    const userReadPerm = this.permRepo.create({ name: 'users:read', description: 'Read users' });
-    const userUpdatePerm = this.permRepo.create({ name: 'users:update', description: 'Update users' });
-    const userDeletePerm = this.permRepo.create({ name: 'users:delete', description: 'Delete users' });
-    const auditReadPerm = this.permRepo.create({ name: 'audit:read', description: 'Read audit logs' });
+    await this.permRepo.upsert([...permissions], { conflictPaths: ['name'] });
+    const persistedPerms = await this.permRepo.find();
+    const permByName = new Map(persistedPerms.map(p => [p.name, p]));
 
-    await this.permRepo.save([
-      taskCreatePerm, taskReadPerm, taskUpdatePerm, taskDeletePerm,
-      userCreatePerm, userReadPerm, userUpdatePerm, userDeletePerm,
-      auditReadPerm
+    await this.orgRepo.upsert(
+      [
+        { name: 'TechCorp Inc', description: 'Technology company' },
+        { name: 'StartupLab', description: 'Startup accelerator' },
+      ],
+      { conflictPaths: ['name'] },
+    );
+    const [techCorp, startupLab] = await Promise.all([
+      this.orgRepo.findOneByOrFail({ name: 'TechCorp Inc' }),
+      this.orgRepo.findOneByOrFail({ name: 'StartupLab' }),
     ]);
 
-    // Create roles with permissions
-    const ownerRole = this.roleRepo.create({
-      name: 'owner',
-      description: 'Organization owner with full access',
-    });
-    ownerRole.permissions = [
-      taskCreatePerm, taskReadPerm, taskUpdatePerm, taskDeletePerm,
-      userCreatePerm, userReadPerm, userUpdatePerm, userDeletePerm,
-      auditReadPerm
-    ];
-    await this.roleRepo.save(ownerRole);
+    await this.roleRepo.upsert(
+      [
+        { name: 'owner', description: 'Organization owner with full access' },
+        { name: 'admin', description: 'Administrator with most permissions' },
+        { name: 'viewer', description: 'Viewer with read-only access' },
+      ],
+      { conflictPaths: ['name'] },
+    );
 
-    const adminRole = this.roleRepo.create({
-      name: 'admin',
-      description: 'Administrator with most permissions',
-    });
+    const roles = await this.roleRepo.find({ relations: { permissions: true } });
+    const roleByName = new Map(roles.map(r => [r.name, r]));
+
+    const requirePerm = (name: (typeof permissions)[number]['name']) => {
+      const perm = permByName.get(name);
+      if (!perm) throw new Error(`Missing permission '${name}' after upsert`);
+      return perm;
+    };
+
+    const ownerRole = roleByName.get('owner');
+    const adminRole = roleByName.get('admin');
+    const viewerRole = roleByName.get('viewer');
+    if (!ownerRole || !adminRole || !viewerRole) {
+      throw new Error('Missing seeded roles after upsert');
+    }
+
+    ownerRole.permissions = permissions.map(p => requirePerm(p.name));
     adminRole.permissions = [
-      taskCreatePerm, taskReadPerm, taskUpdatePerm, taskDeletePerm,
-      userCreatePerm, userReadPerm, userUpdatePerm,
-      auditReadPerm
+      requirePerm('tasks:create'),
+      requirePerm('tasks:read'),
+      requirePerm('tasks:update'),
+      requirePerm('tasks:delete'),
+      requirePerm('users:create'),
+      requirePerm('users:read'),
+      requirePerm('users:update'),
+      requirePerm('audit:read'),
     ];
-    await this.roleRepo.save(adminRole);
+    viewerRole.permissions = [requirePerm('tasks:read'), requirePerm('users:read')];
+    await this.roleRepo.save([ownerRole, adminRole, viewerRole]);
 
-    const viewerRole = this.roleRepo.create({
-      name: 'viewer',
-      description: 'Viewer with read-only access',
-    });
-    viewerRole.permissions = [taskReadPerm, userReadPerm];
-    await this.roleRepo.save(viewerRole);
-
-    // Create organizations
-    const techCorp = this.orgRepo.create({
-      name: 'TechCorp Inc',
-      description: 'Technology company',
-    });
-    await this.orgRepo.save(techCorp);
-
-    const startupLab = this.orgRepo.create({
-      name: 'StartupLab',
-      description: 'Startup accelerator',
-    });
-    await this.orgRepo.save(startupLab);
-
-    // Create users
     const hashedPassword = await bcrypt.hash('password123', 10);
+    const ensureUser = async (input: {
+      email: string;
+      name: string;
+      firstName: string;
+      lastName: string;
+      roleId: string;
+      organizationId: string;
+    }) => {
+      const existing = await this.userRepo.findOne({ where: { email: input.email } });
+      if (existing) {
+        let changed = false;
+        if (existing.roleId !== input.roleId) {
+          existing.roleId = input.roleId;
+          changed = true;
+        }
+        if (existing.organizationId !== input.organizationId) {
+          existing.organizationId = input.organizationId;
+          changed = true;
+        }
+        if (changed) await this.userRepo.save(existing);
+        return existing;
+      }
+      const created = this.userRepo.create({
+        ...input,
+        password: hashedPassword,
+      });
+      return await this.userRepo.save(created);
+    };
 
-    const owner = this.userRepo.create({
+    const owner = await ensureUser({
       email: 'owner@techcorp.com',
-      password: hashedPassword,
       name: 'Owner User',
       firstName: 'Owner',
       lastName: 'User',
+      roleId: ownerRole.id,
+      organizationId: techCorp.id,
     });
-    owner.role = ownerRole;
-    owner.organization = techCorp;
-    await this.userRepo.save(owner);
-
-    const admin = this.userRepo.create({
+    const admin = await ensureUser({
       email: 'admin@techcorp.com',
-      password: hashedPassword,
       name: 'Admin User',
       firstName: 'Admin',
       lastName: 'User',
+      roleId: adminRole.id,
+      organizationId: techCorp.id,
     });
-    admin.role = adminRole;
-    admin.organization = techCorp;
-    await this.userRepo.save(admin);
-
-    const viewer = this.userRepo.create({
+    const viewer = await ensureUser({
       email: 'viewer@techcorp.com',
-      password: hashedPassword,
       name: 'Viewer User',
       firstName: 'Viewer',
       lastName: 'User',
+      roleId: viewerRole.id,
+      organizationId: techCorp.id,
     });
-    viewer.role = viewerRole;
-    viewer.organization = techCorp;
-    await this.userRepo.save(viewer);
-
-    const startupOwner = this.userRepo.create({
+    const startupOwner = await ensureUser({
       email: 'owner@startuplab.com',
-      password: hashedPassword,
       name: 'Startup Owner',
       firstName: 'Startup',
       lastName: 'Owner',
+      roleId: ownerRole.id,
+      organizationId: startupLab.id,
     });
-    startupOwner.role = ownerRole;
-    startupOwner.organization = startupLab;
-    await this.userRepo.save(startupOwner);
 
-    // Create tasks
-    const task1 = this.taskRepo.create({
+    const ensureTask = async (input: {
+      title: string;
+      description: string;
+      status: string;
+      priority: string;
+      dueDate: Date;
+      assignedToId?: string;
+      createdById?: string;
+      organizationId: string;
+    }) => {
+      const existing = await this.taskRepo.findOne({
+        where: { title: input.title, organizationId: input.organizationId },
+      });
+      if (existing) return existing;
+      return await this.taskRepo.save(this.taskRepo.create(input));
+    };
+
+    await ensureTask({
       title: 'Design new landing page',
       description: 'Create mockups for the new product landing page',
       status: 'pending',
       priority: 'high',
-      dueDate: new Date('2025-11-30'),
+      dueDate: new Date('2025-11-30T00:00:00.000Z'),
+      assignedToId: admin.id,
+      createdById: owner.id,
+      organizationId: techCorp.id,
     });
-    task1.assignedTo = admin;
-    task1.createdBy = owner;
-    task1.organization = techCorp;
-    await this.taskRepo.save(task1);
 
-    const task2 = this.taskRepo.create({
+    await ensureTask({
       title: 'Review Q4 analytics',
       description: 'Analyze user engagement metrics from Q4',
       status: 'in-progress',
       priority: 'medium',
-      dueDate: new Date('2025-11-24'),
+      dueDate: new Date('2025-11-24T00:00:00.000Z'),
+      assignedToId: viewer.id,
+      createdById: admin.id,
+      organizationId: techCorp.id,
     });
-    task2.assignedTo = viewer;
-    task2.createdBy = admin;
-    task2.organization = techCorp;
-    await this.taskRepo.save(task2);
 
-    const task3 = this.taskRepo.create({
+    await ensureTask({
       title: 'Setup CI/CD pipeline',
       description: 'Configure automated deployment pipeline',
       status: 'completed',
       priority: 'high',
-      dueDate: new Date('2025-11-20'),
+      dueDate: new Date('2025-11-20T00:00:00.000Z'),
+      assignedToId: admin.id,
+      createdById: owner.id,
+      organizationId: techCorp.id,
     });
-    task3.assignedTo = admin;
-    task3.createdBy = owner;
-    task3.organization = techCorp;
-    await this.taskRepo.save(task3);
 
-    const task4 = this.taskRepo.create({
+    await ensureTask({
       title: 'Prepare investor pitch',
       description: 'Create presentation for Series A funding',
       status: 'pending',
       priority: 'high',
-      dueDate: new Date('2025-12-01'),
+      dueDate: new Date('2025-12-01T00:00:00.000Z'),
+      assignedToId: startupOwner.id,
+      createdById: startupOwner.id,
+      organizationId: startupLab.id,
     });
-    task4.assignedTo = startupOwner;
-    task4.createdBy = startupOwner;
-    task4.organization = startupLab;
-    await this.taskRepo.save(task4);
 
-    return {
-      organizations: 2,
-      users: 4,
-      roles: 3,
-      permissions: 9,
-      tasks: 4,
-    };
+    const [organizations, users, rolesCount, permissionsCount, tasks] = await Promise.all([
+      this.orgRepo.count(),
+      this.userRepo.count(),
+      this.roleRepo.count(),
+      this.permRepo.count(),
+      this.taskRepo.count(),
+    ]);
+
+    return { organizations, users, roles: rolesCount, permissions: permissionsCount, tasks };
   }
 }

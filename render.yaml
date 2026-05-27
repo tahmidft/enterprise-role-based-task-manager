@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: enterprise-role-based-task-manager-api
+    env: node
+    plan: free
+    buildCommand: npm ci --legacy-peer-deps && npx nx build api
+    startCommand: node dist/api/main.js
+    healthCheckPath: /api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3333
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRATION
+        value: 24h
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SYNCHRONIZE
+        value: "false"

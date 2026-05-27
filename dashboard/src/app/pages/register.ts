@@ -2,31 +2,29 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { AuthService } from '../../../services/auth';
 
 @Component({
   selector: 'app-register',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './register.html',
-  styleUrl: './register.css'
+  styleUrl: './register.css',
 })
 export class RegisterComponent {
   private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
+  private authService = inject(AuthService);
   private router = inject(Router);
 
   registerForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     name: ['', Validators.required],
-    organizationName: ['', Validators.required]
+    organizationName: ['', Validators.required],
   });
 
   isLoading = signal(false);
   errorMessage = signal('');
-
-  private readonly API_URL = 'http://localhost:3333/api';
 
   onSubmit(): void {
     if (this.registerForm.invalid) return;
@@ -34,17 +32,14 @@ export class RegisterComponent {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    this.http.post<{ access_token: string; user: unknown }>(`${this.API_URL}/auth/register`, this.registerForm.value)
-      .subscribe({
-        next: (response) => {
-          
-          
-          this.router.navigate(['/dashboard']);
-        },
-        error: (error: HttpErrorResponse) => {
-          this.isLoading.set(false);
-          this.errorMessage.set(error.error?.message || 'Registration failed. Please try again.');
-        }
-      });
+    this.authService.register(this.registerForm.value).subscribe({
+      next: () => {
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.isLoading.set(false);
+        this.errorMessage.set(err.error?.message || 'Registration failed. Please try again.');
+      },
+    });
   }
 }
