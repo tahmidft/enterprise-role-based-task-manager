@@ -10,6 +10,7 @@ import { Comment } from '../entities/comment.entity';
 import { Task } from '../entities/task.entity';
 import { User } from '../entities/user.entity';
 import { AuditService } from '../services/audit.service';
+import { TasksGateway } from '../websocket/tasks.gateway';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 
@@ -19,6 +20,7 @@ export class CommentsService {
     @InjectRepository(Comment) private commentRepo: Repository<Comment>,
     @InjectRepository(Task) private taskRepo: Repository<Task>,
     private auditService: AuditService,
+    private tasksGateway: TasksGateway,
     @Inject(REQUEST) private request: Request,
   ) {}
 
@@ -37,7 +39,7 @@ export class CommentsService {
     content: string,
     user: User,
   ): Promise<Comment> {
-    await this.validateTaskAccess(taskId, user);
+    const task = await this.validateTaskAccess(taskId, user);
 
     const comment = this.commentRepo.create({
       content,
@@ -60,6 +62,10 @@ export class CommentsService {
       where: { id: saved.id },
       relations: ['user'],
     });
+
+    // Notify all org members via WS so they can show unread badges
+    this.tasksGateway.emitCommentCreated(result!, taskId, task.organizationId);
+
     return result!;
   }
 

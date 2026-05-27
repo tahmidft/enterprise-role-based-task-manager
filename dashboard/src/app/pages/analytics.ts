@@ -6,9 +6,11 @@ import {
   AfterViewInit,
   ElementRef,
   ViewChild,
+  ChangeDetectorRef,
+  OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AnalyticsService, AnalyticsData } from '../../../services/analytics.service';
 import { ThemeToggleComponent } from '../components/theme-toggle';
 import { AuthService } from '../../../services/auth';
@@ -19,21 +21,22 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [CommonModule, ThemeToggleComponent],
+  imports: [CommonModule, RouterLink, ThemeToggleComponent],
   templateUrl: './analytics.html',
   styleUrl: './analytics.css',
 })
-export class AnalyticsComponent implements OnInit, AfterViewInit {
+export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
   private authService = inject(AuthService);
-  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   data = signal<AnalyticsData | null>(null);
   isLoading = signal(true);
   error = signal('');
 
-  private chartsReady = false;
-  private dataReady = false;
+  // We defer chart rendering via setTimeout so Angular has time to
+  // render the *ngIf-guarded canvas elements before we try to access them.
+  private renderTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('statusChart') statusChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('priorityChart') priorityChartRef!: ElementRef<HTMLCanvasElement>;
@@ -46,8 +49,10 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
       next: d => {
         this.data.set(d);
         this.isLoading.set(false);
-        this.dataReady = true;
-        if (this.chartsReady) this.renderCharts();
+        // Force a change detection pass so the *ngIf block renders the canvas
+        // elements, then draw charts on the next macro-task.
+        this.cdr.detectChanges();
+        this.renderTimer = setTimeout(() => this.renderCharts(), 0);
       },
       error: err => {
         this.error.set(err.error?.message || 'Failed to load analytics');
@@ -57,8 +62,12 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    this.chartsReady = true;
-    if (this.dataReady) this.renderCharts();
+    // Nothing to do here — charts are drawn after data arrives.
+  }
+
+  ngOnDestroy(): void {
+    if (this.renderTimer !== null) clearTimeout(this.renderTimer);
+    this.charts.forEach(c => c.destroy());
   }
 
   private renderCharts(): void {
@@ -68,43 +77,63 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
     this.charts.forEach(c => c.destroy());
     this.charts = [];
 
-    // Status pie
+    const STATUS_COLORS: Record<string, string> = {
+      pending:      '#F59E0B',
+      'in-progress':'#3B82F6',
+      completed:    '#10B981',
+      cancelled:    '#6B7280',
+    };
+
+    // Status doughnut
     const statusCtx = this.statusChartRef?.nativeElement;
-    if (statusCtx) {
+    if (statusCtx && Object.keys(d.tasksByStatus).length > 0) {
       this.charts.push(
         new Chart(statusCtx, {
           type: 'doughnut',
           data: {
             labels: Object.keys(d.tasksByStatus),
-            datasets: [
-              {
-                data: Object.values(d.tasksByStatus),
-                backgroundColor: ['#F59E0B', '#3B82F6', '#10B981', '#6B7280'],
-              },
-            ],
+            datasets: [{
+              data: Object.values(d.tasksByStatus),
+              backgroundColor: Object.keys(d.tasksByStatus).map(
+                k => STATUS_COLORS[k] ?? '#94A3B8',
+              ),
+              borderWidth: 2,
+            }],
           },
-          options: { plugins: { legend: { position: 'bottom' } } },
+          options: {
+            plugins: { legend: { position: 'bottom' } },
+            cutout: '60%',
+          },
         }),
       );
     }
 
     // Priority bar
     const priorityCtx = this.priorityChartRef?.nativeElement;
-    if (priorityCtx) {
+    if (priorityCtx && Object.keys(d.tasksByPriority).length > 0) {
+      const PRIORITY_COLORS: Record<string, string> = {
+        high:   '#EF4444',
+        medium: '#F97316',
+        low:    '#6B7280',
+      };
       this.charts.push(
         new Chart(priorityCtx, {
           type: 'bar',
           data: {
             labels: Object.keys(d.tasksByPriority),
-            datasets: [
-              {
-                label: 'Tasks',
-                data: Object.values(d.tasksByPriority),
-                backgroundColor: ['#EF4444', '#F97316', '#6B7280'],
-              },
-            ],
+            datasets: [{
+              label: 'Tasks',
+              data: Object.values(d.tasksByPriority),
+              backgroundColor: Object.keys(d.tasksByPriority).map(
+                k => PRIORITY_COLORS[k] ?? '#94A3B8',
+              ),
+              borderRadius: 4,
+            }],
           },
-          options: { plugins: { legend: { display: false } } },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+          },
         }),
       );
     }
@@ -117,30 +146,30 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
           type: 'line',
           data: {
             labels: d.auditActivityLast30Days.map(r => r.date),
-            datasets: [
-              {
-                label: 'Audit events',
-                data: d.auditActivityLast30Days.map(r => r.count),
-                borderColor: '#6366F1',
-                backgroundColor: 'rgba(99,102,241,0.15)',
-                fill: true,
-                tension: 0.3,
-              },
-            ],
+            datasets: [{
+              label: 'Audit events',
+              data: d.auditActivityLast30Days.map(r => r.count),
+              borderColor: '#6366F1',
+              backgroundColor: 'rgba(99,102,241,0.12)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3,
+            }],
+          },
+          options: {
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
           },
         }),
       );
     }
   }
 
+  readonly Object = Object;
+
   completionPct(): string {
     const d = this.data();
     if (!d) return '0';
     return (d.completionRate * 100).toFixed(1);
-  }
-
-  back(): void {
-    this.router.navigate(['/dashboard']);
   }
 
   logout(): void {

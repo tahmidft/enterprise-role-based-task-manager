@@ -14,6 +14,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Task } from '../entities/task.entity';
+import { Comment } from '../entities/comment.entity';
 
 export type TaskEvent =
   | 'task:created'
@@ -79,5 +80,15 @@ export class TasksGateway implements OnGatewayConnection, OnGatewayDisconnect {
     organizationId: string,
   ): void {
     this.server.to(`org:${organizationId}`).emit(event, task);
+  }
+
+  emitCommentCreated(
+    comment: Comment,
+    taskId: string,
+    organizationId: string,
+  ): void {
+    this.server
+      .to(`org:${organizationId}`)
+      .emit('comment:created', { comment, taskId });
   }
 }

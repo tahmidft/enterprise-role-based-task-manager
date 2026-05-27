@@ -14,6 +14,9 @@ export interface Task {
   createdBy?: { id: string; name: string };
   organizationId: string;
   createdAt: string;
+  /** Populated by the API when listing tasks */
+  latestCommentAt?: string | null;
+  commentCount?: number;
 }
 
 export interface PaginatedTasks {

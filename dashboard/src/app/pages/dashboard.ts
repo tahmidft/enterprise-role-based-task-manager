@@ -8,9 +8,11 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../services/auth';
 import { TasksApiService, Task, Comment, TaskFilters } from '../../../services/tasks.service';
 import { WebsocketService } from '../../../services/websocket.service';
+import { CommentReadService } from '../../../services/comment-read.service';
 import { ThemeToggleComponent } from '../components/theme-toggle';
 import { IUser, IRole } from '@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/data';
 import { Subscription } from 'rxjs';
@@ -22,7 +24,7 @@ interface UserWithRole extends IUser {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, ThemeToggleComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ThemeToggleComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -30,6 +32,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private tasksApi = inject(TasksApiService);
   private wsService = inject(WebsocketService);
+  private commentReadService = inject(CommentReadService);
 
   currentUser = signal<UserWithRole | null>(null);
   tasks = signal<Task[]>([]);
@@ -37,6 +40,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isLoading = signal(true);
   canCreateTasks = signal(false);
   canDeleteTasks = signal(false);
+  canComment = signal(false);
 
   // Filters
   filterStatus = signal('');
@@ -54,7 +58,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   newComment = signal('');
   commentsLoading = signal(false);
 
-  private wsSub: Subscription | null = null;
+  // Notification bell
+  showNotificationPanel = signal(false);
+  unreadTasks = computed(() =>
+    this.tasks().filter(t => this.commentReadService.hasUnread(t.id, t.latestCommentAt)),
+  );
+  totalUnread = computed(() => this.unreadTasks().length);
+
+  private subscriptions: Subscription[] = [];
 
   ngOnInit(): void {
     this.currentUser.set(this.authService.getCurrentUser() as UserWithRole);
@@ -62,20 +73,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadTasks();
 
     this.wsService.connect();
-    this.wsSub = this.wsService.taskEvents$.subscribe(({ type, task }) => {
-      if (type === 'task:deleted') {
-        this.tasks.update(ts => ts.filter(t => t.id !== task.id));
-      } else if (type === 'task:created') {
-        this.tasks.update(ts => [task, ...ts]);
-        this.totalTasks.update(n => n + 1);
-      } else {
-        this.tasks.update(ts => ts.map(t => (t.id === task.id ? task : t)));
-      }
-    });
+
+    this.subscriptions.push(
+      this.wsService.taskEvents$.subscribe(({ type, task }) => {
+        if (type === 'task:deleted') {
+          this.tasks.update(ts => ts.filter(t => t.id !== task.id));
+        } else if (type === 'task:created') {
+          this.tasks.update(ts => [task, ...ts]);
+          this.totalTasks.update(n => n + 1);
+        } else {
+          this.tasks.update(ts => ts.map(t => (t.id === task.id ? task : t)));
+        }
+      }),
+    );
+
+    // When a comment arrives via WS, update latestCommentAt on the affected task
+    this.subscriptions.push(
+      this.wsService.commentEvents$.subscribe(({ taskId }) => {
+        const now = new Date().toISOString();
+        this.tasks.update(ts =>
+          ts.map(t =>
+            t.id === taskId
+              ? { ...t, latestCommentAt: now, commentCount: (t.commentCount ?? 0) + 1 }
+              : t,
+          ),
+        );
+      }),
+    );
   }
 
   ngOnDestroy(): void {
-    this.wsSub?.unsubscribe();
+    this.subscriptions.forEach(s => s.unsubscribe());
     this.wsService.disconnect();
   }
 
@@ -122,6 +150,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const names = user.role.permissions.map((p: { name: string }) => p.name);
       this.canCreateTasks.set(names.includes('tasks:create'));
       this.canDeleteTasks.set(names.includes('tasks:delete'));
+      this.canComment.set(names.includes('tasks:update'));
     }
   }
 
@@ -131,6 +160,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   getTaskAssigneeName(task: Task): string {
     return task.assignedTo?.name || 'Unassigned';
+  }
+
+  isUnread(task: Task): boolean {
+    return this.commentReadService.hasUnread(task.id, task.latestCommentAt);
   }
 
   getStatusBadgeClass(status: string): string {
@@ -165,10 +198,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   openComments(task: Task): void {
     this.selectedTask.set(task);
     this.commentsLoading.set(true);
+    this.showNotificationPanel.set(false);
     this.tasksApi.getComments(task.id).subscribe({
       next: c => {
         this.comments.set(c);
         this.commentsLoading.set(false);
+        // Mark as read as soon as the panel is open and data is loaded
+        this.commentReadService.markRead(task.id);
+        // Also patch the task in the list so the badge disappears immediately
+        this.tasks.update(ts =>
+          ts.map(t => (t.id === task.id ? { ...t, _justRead: true } : t)),
+        );
       },
       error: () => this.commentsLoading.set(false),
     });
@@ -183,25 +223,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
   submitComment(): void {
     const task = this.selectedTask();
     const content = this.newComment().trim();
-    if (!task || !content) return;
+    if (!task || !content || !this.canComment()) return;
     this.tasksApi.addComment(task.id, content).subscribe({
       next: c => {
         this.comments.update(cs => [...cs, c]);
         this.newComment.set('');
+        // We just posted so stay "read"
+        this.commentReadService.markRead(task.id);
       },
     });
   }
 
-  goToAnalytics(): void {
-    window.location.href = '/analytics';
+  toggleNotificationPanel(): void {
+    this.showNotificationPanel.update(v => !v);
   }
 
-  logout(): void {
-    this.authService.logout();
+  closeNotificationPanel(): void {
+    this.showNotificationPanel.set(false);
   }
 
   isOwnerOrAdmin(): boolean {
     const role = this.getUserRoleName();
     return role === 'owner' || role === 'admin';
+  }
+
+  logout(): void {
+    this.authService.logout();
   }
 }

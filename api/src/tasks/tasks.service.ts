@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task } from '../entities/task.entity';
+import { Comment } from '../entities/comment.entity';
 import { User } from '../entities/user.entity';
 import { AuditService } from '../services/audit.service';
 import { TasksGateway } from '../websocket/tasks.gateway';
@@ -23,6 +24,11 @@ export interface TaskFilters {
   search?: string;
 }
 
+export interface TaskWithMeta extends Task {
+  latestCommentAt: string | null;
+  commentCount: number;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -35,6 +41,8 @@ export class TasksService {
   constructor(
     @InjectRepository(Task)
     private taskRepo: Repository<Task>,
+    @InjectRepository(Comment)
+    private commentRepo: Repository<Comment>,
     private auditService: AuditService,
     private tasksGateway: TasksGateway,
     private notificationsService: NotificationsService,
@@ -44,7 +52,7 @@ export class TasksService {
   async findAll(
     user: User,
     filters: TaskFilters = {},
-  ): Promise<PaginatedResult<Task>> {
+  ): Promise<PaginatedResult<TaskWithMeta>> {
     const page = Math.max(1, filters.page ?? 1);
     const limit = Math.min(100, Math.max(1, filters.limit ?? 20));
     const offset = (page - 1) * limit;
@@ -65,9 +73,7 @@ export class TasksService {
       query.andWhere('task.status = :status', { status: filters.status });
     }
     if (filters.priority) {
-      query.andWhere('task.priority = :priority', {
-        priority: filters.priority,
-      });
+      query.andWhere('task.priority = :priority', { priority: filters.priority });
     }
     if (filters.assignedTo) {
       query.andWhere('task.assignedToId = :assignedTo', {
@@ -81,7 +87,10 @@ export class TasksService {
       );
     }
 
-    const [data, total] = await query.skip(offset).take(limit).getManyAndCount();
+    const [tasks, total] = await query.skip(offset).take(limit).getManyAndCount();
+
+    // Attach per-task comment stats in one batch query
+    const data = await this.attachCommentStats(tasks);
 
     await this.auditService.log({
       action: 'task:list',
@@ -233,5 +242,32 @@ export class TasksService {
       { ...task, id } as Task,
       user.organizationId,
     );
+  }
+
+  private async attachCommentStats(tasks: Task[]): Promise<TaskWithMeta[]> {
+    if (tasks.length === 0) {
+      return [];
+    }
+
+    const taskIds = tasks.map(t => t.id);
+
+    const stats = await this.commentRepo
+      .createQueryBuilder('c')
+      .select('c.taskId', 'taskId')
+      .addSelect('MAX(c.createdAt)', 'latestCommentAt')
+      .addSelect('COUNT(*)', 'commentCount')
+      .where('c.taskId IN (:...taskIds)', { taskIds })
+      .groupBy('c.taskId')
+      .getRawMany<{ taskId: string; latestCommentAt: string | null; commentCount: string }>();
+
+    const statsMap = new Map(stats.map(s => [s.taskId, s]));
+
+    return tasks.map(task => {
+      const s = statsMap.get(task.id);
+      return Object.assign(task, {
+        latestCommentAt: s?.latestCommentAt ?? null,
+        commentCount: s ? Number(s.commentCount) : 0,
+      }) as TaskWithMeta;
+    });
   }
 }

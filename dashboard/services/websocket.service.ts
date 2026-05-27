@@ -3,13 +3,18 @@ import { Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 import { AuthService } from './auth';
 import { EnvironmentService } from './environment';
-import { Task } from './tasks.service';
+import { Task, Comment } from './tasks.service';
 
 export type TaskEvent = 'task:created' | 'task:updated' | 'task:deleted' | 'task:assigned';
 
 export interface TaskSocketEvent {
   type: TaskEvent;
   task: Task;
+}
+
+export interface CommentSocketEvent {
+  comment: Comment;
+  taskId: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -20,6 +25,9 @@ export class WebsocketService implements OnDestroy {
 
   private taskEventSubject = new Subject<TaskSocketEvent>();
   taskEvents$ = this.taskEventSubject.asObservable();
+
+  private commentEventSubject = new Subject<CommentSocketEvent>();
+  commentEvents$ = this.commentEventSubject.asObservable();
 
   connect(): void {
     if (this.socket?.connected) return;
@@ -32,12 +40,16 @@ export class WebsocketService implements OnDestroy {
       transports: ['websocket'],
     });
 
-    const events: TaskEvent[] = ['task:created', 'task:updated', 'task:deleted', 'task:assigned'];
-    for (const event of events) {
+    const taskEvents: TaskEvent[] = ['task:created', 'task:updated', 'task:deleted', 'task:assigned'];
+    for (const event of taskEvents) {
       this.socket.on(event, (task: Task) => {
         this.taskEventSubject.next({ type: event, task });
       });
     }
+
+    this.socket.on('comment:created', (payload: CommentSocketEvent) => {
+      this.commentEventSubject.next(payload);
+    });
   }
 
   disconnect(): void {

@@ -2,12 +2,16 @@
   <header class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
     <div class="container mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <button (click)="back()" class="text-sm text-blue-600 hover:underline dark:text-blue-400">&larr; Back</button>
+        <a routerLink="/dashboard"
+           class="text-sm text-blue-600 hover:underline dark:text-blue-400 flex items-center gap-1">
+          &larr; Back
+        </a>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Analytics</h1>
       </div>
       <div class="flex items-center gap-3">
         <app-theme-toggle />
-        <button (click)="logout()" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+        <button (click)="logout()"
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
           Logout
         </button>
       </div>
@@ -15,60 +19,89 @@
   </header>
 
   <main class="container mx-auto px-4 py-8">
+
     <div *ngIf="isLoading()" class="flex items-center justify-center py-20">
       <p class="text-gray-600 dark:text-gray-400">Loading analytics…</p>
     </div>
 
-    <div *ngIf="error()" class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded p-4 mb-6">
+    <div *ngIf="error()"
+         class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded p-4 mb-6">
       {{ error() }}
     </div>
 
     <ng-container *ngIf="data() as d">
-      <!-- Summary cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+      <!-- Summary cards — 5 cards in two rows on mobile, one row on xl -->
+      <div class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
           <p class="text-sm text-gray-500 dark:text-gray-400">Total Tasks</p>
           <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ d.totalTasks }}</p>
         </div>
+
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
           <p class="text-sm text-gray-500 dark:text-gray-400">Open Tasks</p>
           <p class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ d.openTasks }}</p>
         </div>
+
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Overdue Tasks</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Overdue</p>
           <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{{ d.overdueTasks }}</p>
         </div>
+
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Completion Rate</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Completion</p>
           <p class="text-3xl font-bold text-green-600 dark:text-green-400 mt-1">{{ completionPct() }}%</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5 col-span-2 md:col-span-1">
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
           <p class="text-sm text-gray-500 dark:text-gray-400">Active Users (30d)</p>
           <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">{{ d.activeUsers }}</p>
         </div>
+
       </div>
 
-      <!-- Charts -->
+      <!-- Charts row -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 class="font-semibold text-gray-900 dark:text-white mb-4">Tasks by Status</h3>
-          <canvas #statusChart></canvas>
+          <div *ngIf="Object.keys(d.tasksByStatus).length === 0"
+               class="flex items-center justify-center h-40 text-sm text-gray-500 dark:text-gray-400">
+            No task data yet
+          </div>
+          <canvas *ngIf="Object.keys(d.tasksByStatus).length > 0" #statusChart class="max-h-64"></canvas>
         </div>
+
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 class="font-semibold text-gray-900 dark:text-white mb-4">Tasks by Priority</h3>
-          <canvas #priorityChart></canvas>
+          <div *ngIf="Object.keys(d.tasksByPriority).length === 0"
+               class="flex items-center justify-center h-40 text-sm text-gray-500 dark:text-gray-400">
+            No task data yet
+          </div>
+          <canvas *ngIf="Object.keys(d.tasksByPriority).length > 0" #priorityChart class="max-h-64"></canvas>
         </div>
+
       </div>
 
+      <!-- Activity chart -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
         <h3 class="font-semibold text-gray-900 dark:text-white mb-4">Audit Activity — Last 30 Days</h3>
-        <canvas #activityChart></canvas>
+        <div *ngIf="d.auditActivityLast30Days.length === 0"
+             class="flex items-center justify-center h-32 text-sm text-gray-500 dark:text-gray-400">
+          No activity recorded yet
+        </div>
+        <canvas *ngIf="d.auditActivityLast30Days.length > 0" #activityChart class="max-h-48"></canvas>
       </div>
 
-      <!-- Top assignees -->
+      <!-- Assignee table -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 class="font-semibold text-gray-900 dark:text-white mb-4">Tasks by Assignee</h3>
-        <div class="overflow-x-auto">
+        <div *ngIf="d.tasksByAssignee.length === 0"
+             class="text-sm text-gray-500 dark:text-gray-400 py-4">
+          No assigned tasks yet
+        </div>
+        <div *ngIf="d.tasksByAssignee.length > 0" class="overflow-x-auto">
           <table class="w-full">
             <thead class="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -79,12 +112,13 @@
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr *ngFor="let row of d.tasksByAssignee" class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ row.assigneeName }}</td>
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ row.count }}</td>
+                <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{{ row.count }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
     </ng-container>
   </main>
 </div>
