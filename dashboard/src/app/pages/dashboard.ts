@@ -87,17 +87,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }),
     );
 
-    // When a comment arrives via WS, update latestCommentAt on the affected task
+    // When a comment arrives via WS, update comment metadata.
+    // The author should not receive an unread notification for their own comment.
     this.subscriptions.push(
-      this.wsService.commentEvents$.subscribe(({ taskId }) => {
-        const now = new Date().toISOString();
+      this.wsService.commentEvents$.subscribe(({ taskId, comment }) => {
+        const currentUserId = this.currentUser()?.id;
+        const isOwnComment = comment.userId === currentUserId;
+        const createdAt = comment.createdAt ?? new Date().toISOString();
+
         this.tasks.update(ts =>
           ts.map(t =>
             t.id === taskId
-              ? { ...t, latestCommentAt: now, commentCount: (t.commentCount ?? 0) + 1 }
+              ? {
+                  ...t,
+                  latestCommentAt: createdAt,
+                  commentCount: (t.commentCount ?? 0) + 1,
+                }
               : t,
           ),
         );
+
+        if (isOwnComment) {
+          this.commentReadService.markRead(taskId);
+        }
       }),
     );
   }
