@@ -1,9 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
 
-@layer base {
-  body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white;
-  }
+:root {
+  --mdc-theme-primary: #1976d2;
+}
+
+html,
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  background: #f4f6f8;
+  color: #1f2937;
 }

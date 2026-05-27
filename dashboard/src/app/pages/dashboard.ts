@@ -1,262 +1,249 @@
-import {
-  Component,
-  inject,
-  OnInit,
-  OnDestroy,
-  signal,
-  computed,
-} from '@angular/core';
+import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { NestedTreeControl } from '@angular/cdk/tree';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { MatBadgeModule } from '@angular/material/badge';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTreeNestedDataSource, MatTreeModule } from '@angular/material/tree';
+import cytoscape, { type Core } from 'cytoscape';
 import { AuthService } from '../../../services/auth';
-import { TasksApiService, Task, Comment, TaskFilters } from '../../../services/tasks.service';
-import { WebsocketService } from '../../../services/websocket.service';
-import { CommentReadService } from '../../../services/comment-read.service';
-import { ThemeToggleComponent } from '../components/theme-toggle';
 import { IUser, IRole } from '@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/data';
-import { Subscription } from 'rxjs';
 
 interface UserWithRole extends IUser {
-  role?: IRole & { permissions?: { name: string }[] };
+  role?: IRole & { permissions?: Array<{ name: string }> };
+}
+
+interface TaskModel {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  completionPercent: number;
+  budgetHours: number;
+  actualHours: number;
+  assignedToId?: string;
+  parentTaskId?: string;
+  projectId?: string;
+  dependsOn?: Array<{ id: string }>;
+  children?: TaskModel[];
+}
+
+interface EvmResponse {
+  pv: number;
+  ev: number;
+  ac: number;
+  spi: number;
+  cpi: number;
+  eac: number;
+}
+
+interface CriticalPathResponse {
+  nodes: Array<{ taskId: string; title: string; float: number }>;
+  criticalTaskIds: string[];
+  criticalEdges: Array<{ from: string; to: string }>;
+}
+
+interface SecurityAlertsResponse {
+  alerts: Array<{
+    userId: string;
+    userEmail?: string;
+    riskScore: number;
+    level: 'HIGH' | 'MEDIUM' | 'LOW';
+    reasons: string[];
+  }>;
+}
+
+interface ResourceLevelingResponse {
+  suggestions: Array<{ taskId: string; taskTitle: string; suggestion: string }>;
 }
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ThemeToggleComponent],
+  imports: [
+    CommonModule,
+    MatToolbarModule,
+    MatCardModule,
+    MatButtonModule,
+    MatChipsModule,
+    MatTableModule,
+    MatTreeModule,
+    MatBadgeModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    DragDropModule,
+  ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
-export class DashboardComponent implements OnInit, OnDestroy {
+export class DashboardComponent implements OnInit {
+  private http = inject(HttpClient);
   private authService = inject(AuthService);
-  private tasksApi = inject(TasksApiService);
-  private wsService = inject(WebsocketService);
-  private commentReadService = inject(CommentReadService);
+  private readonly API_URL = 'http://localhost:3333/api';
+
+  @ViewChild('graphContainer') graphContainer?: ElementRef<HTMLDivElement>;
+  private cy?: Core;
 
   currentUser = signal<UserWithRole | null>(null);
-  tasks = signal<Task[]>([]);
-  totalTasks = signal(0);
-  isLoading = signal(true);
-  canCreateTasks = signal(false);
-  canDeleteTasks = signal(false);
-  canComment = signal(false);
+  tasks = signal<TaskModel[]>([]);
+  loading = signal(false);
+  evm = signal<EvmResponse | null>(null);
+  criticalPath = signal<CriticalPathResponse | null>(null);
+  securityAlerts = signal<SecurityAlertsResponse['alerts']>([]);
+  resourceSuggestions = signal<ResourceLevelingResponse['suggestions']>([]);
 
-  // Filters
-  filterStatus = signal('');
-  filterPriority = signal('');
-  filterSearch = signal('');
-  currentPage = signal(1);
-  readonly pageSize = 20;
+  projectId = signal<string | null>(null);
+  securityBadge = signal(0);
 
-  totalPages = computed(() => Math.ceil(this.totalTasks() / this.pageSize));
-  pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
+  treeControl = new NestedTreeControl<TaskModel>(node => node.children ?? []);
+  treeDataSource = new MatTreeNestedDataSource<TaskModel>();
+  hasChild = (_: number, node: TaskModel) => !!node.children && node.children.length > 0;
 
-  // Comments panel
-  selectedTask = signal<Task | null>(null);
-  comments = signal<Comment[]>([]);
-  newComment = signal('');
-  commentsLoading = signal(false);
-
-  // Notification bell
-  showNotificationPanel = signal(false);
-  unreadTasks = computed(() =>
-    this.tasks().filter(t => this.commentReadService.hasUnread(t.id, t.latestCommentAt)),
-  );
-  totalUnread = computed(() => this.unreadTasks().length);
-
-  private subscriptions: Subscription[] = [];
+  pending = signal<TaskModel[]>([]);
+  inProgress = signal<TaskModel[]>([]);
+  done = signal<TaskModel[]>([]);
+  readonly displayedColumns = ['title', 'status', 'priority', 'completionPercent', 'budgetHours', 'actualHours'];
 
   ngOnInit(): void {
     this.currentUser.set(this.authService.getCurrentUser() as UserWithRole);
-    this.checkPermissions();
-    this.loadTasks();
-
-    this.wsService.connect();
-
-    this.subscriptions.push(
-      this.wsService.taskEvents$.subscribe(({ type, task }) => {
-        if (type === 'task:deleted') {
-          this.tasks.update(ts => ts.filter(t => t.id !== task.id));
-        } else if (type === 'task:created') {
-          this.tasks.update(ts => [task, ...ts]);
-          this.totalTasks.update(n => n + 1);
-        } else {
-          this.tasks.update(ts => ts.map(t => (t.id === task.id ? task : t)));
-        }
-      }),
-    );
-
-    // When a comment arrives via WS, update comment metadata.
-    // The author should not receive an unread notification for their own comment.
-    this.subscriptions.push(
-      this.wsService.commentEvents$.subscribe(({ taskId, comment }) => {
-        const currentUserId = this.currentUser()?.id;
-        const isOwnComment = comment.userId === currentUserId;
-        const createdAt = comment.createdAt ?? new Date().toISOString();
-
-        this.tasks.update(ts =>
-          ts.map(t =>
-            t.id === taskId
-              ? {
-                  ...t,
-                  latestCommentAt: createdAt,
-                  commentCount: (t.commentCount ?? 0) + 1,
-                }
-              : t,
-          ),
-        );
-
-        if (isOwnComment) {
-          this.commentReadService.markRead(taskId);
-        }
-      }),
-    );
+    this.loadTasksAndProject();
   }
 
-  ngOnDestroy(): void {
-    this.subscriptions.forEach(s => s.unsubscribe());
-    this.wsService.disconnect();
+  loadTasksAndProject(): void {
+    this.loading.set(true);
+    this.http
+      .get<{ data: TaskModel[] }>(`${this.API_URL}/tasks?page=1&limit=200`)
+      .subscribe({
+        next: ({ data }) => {
+          this.tasks.set(data);
+          this.deriveBoardColumns(data);
+          this.treeDataSource.data = this.buildTree(data);
+          const firstProjectId = data.find(t => t.projectId)?.projectId ?? null;
+          this.projectId.set(firstProjectId);
+          if (firstProjectId) this.loadProjectAnalytics(firstProjectId);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+        },
+      });
   }
 
-  loadTasks(): void {
-    this.isLoading.set(true);
-    const filters: TaskFilters = {
-      page: this.currentPage(),
-      limit: this.pageSize,
-      status: this.filterStatus() || undefined,
-      priority: this.filterPriority() || undefined,
-      search: this.filterSearch() || undefined,
-    };
-    this.tasksApi.getTasks(filters).subscribe({
-      next: result => {
-        this.tasks.set(result.data);
-        this.totalTasks.set(result.total);
-        this.isLoading.set(false);
-      },
-      error: () => this.isLoading.set(false),
+  loadProjectAnalytics(projectId: string): void {
+    this.http.get<EvmResponse>(`${this.API_URL}/projects/${projectId}/evm`).subscribe(r => this.evm.set(r));
+    this.http.get<CriticalPathResponse>(`${this.API_URL}/projects/${projectId}/critical-path`).subscribe(r => {
+      this.criticalPath.set(r);
+      setTimeout(() => this.renderCpmGraph(), 0);
+    });
+    this.http
+      .get<ResourceLevelingResponse>(`${this.API_URL}/projects/${projectId}/resource-leveling`)
+      .subscribe(r => this.resourceSuggestions.set(r.suggestions));
+    this.http.get<SecurityAlertsResponse>(`${this.API_URL}/security/alerts`).subscribe(r => {
+      this.securityAlerts.set(r.alerts);
+      this.securityBadge.set(r.alerts.filter(a => a.level === 'HIGH').length);
     });
   }
 
-  applyFilters(): void {
-    this.currentPage.set(1);
-    this.loadTasks();
+  evmStatus(value: number): 'green' | 'yellow' | 'red' {
+    if (value > 1) return 'green';
+    if (value >= 0.9) return 'yellow';
+    return 'red';
   }
 
-  clearFilters(): void {
-    this.filterStatus.set('');
-    this.filterPriority.set('');
-    this.filterSearch.set('');
-    this.currentPage.set(1);
-    this.loadTasks();
-  }
-
-  goToPage(page: number): void {
-    this.currentPage.set(page);
-    this.loadTasks();
-  }
-
-  checkPermissions(): void {
-    const user = this.currentUser();
-    if (user?.role?.permissions) {
-      const names = user.role.permissions.map((p: { name: string }) => p.name);
-      this.canCreateTasks.set(names.includes('tasks:create'));
-      this.canDeleteTasks.set(names.includes('tasks:delete'));
-      this.canComment.set(names.includes('tasks:update'));
+  drop(event: CdkDragDrop<TaskModel[]>, status: 'pending' | 'in-progress' | 'completed') {
+    if (event.previousContainer === event.container) {
+      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+      return;
     }
+    transferArrayItem(
+      event.previousContainer.data,
+      event.container.data,
+      event.previousIndex,
+      event.currentIndex,
+    );
+    const task = event.container.data[event.currentIndex];
+    task.status = status;
+    this.http.put(`${this.API_URL}/tasks/${task.id}`, { status }).subscribe();
   }
 
-  getUserRoleName(): string {
-    return this.currentUser()?.role?.name || '';
+  private deriveBoardColumns(tasks: TaskModel[]) {
+    this.pending.set(tasks.filter(t => t.status === 'pending'));
+    this.inProgress.set(tasks.filter(t => t.status === 'in-progress'));
+    this.done.set(tasks.filter(t => t.status === 'completed'));
   }
 
-  getTaskAssigneeName(task: Task): string {
-    return task.assignedTo?.name || 'Unassigned';
+  private buildTree(tasks: TaskModel[]): TaskModel[] {
+    const byId = new Map(tasks.map(t => [t.id, { ...t, children: [] as TaskModel[] }]));
+    const roots: TaskModel[] = [];
+    for (const task of byId.values()) {
+      if (task.parentTaskId && byId.has(task.parentTaskId)) {
+        byId.get(task.parentTaskId)!.children!.push(task);
+      } else {
+        roots.push(task);
+      }
+    }
+    return roots;
   }
 
-  isUnread(task: Task): boolean {
-    return this.commentReadService.hasUnread(task.id, task.latestCommentAt);
-  }
+  private renderCpmGraph(): void {
+    if (!this.graphContainer?.nativeElement || !this.criticalPath()) return;
+    const cp = this.criticalPath()!;
+    const allTasks = this.tasks();
+    const taskNodes = allTasks.map(task => ({ data: { id: task.id, label: task.title } }));
+    const edges = allTasks.flatMap(task =>
+      (task.dependsOn ?? []).map(dep => ({
+        data: { id: `${dep.id}-${task.id}`, source: dep.id, target: task.id },
+      })),
+    );
 
-  getStatusBadgeClass(status: string): string {
-    const map: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      'in-progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    };
-    return map[status] ?? 'bg-gray-100 text-gray-800';
-  }
-
-  getPriorityBadgeClass(priority: string): string {
-    const map: Record<string, string> = {
-      high: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      medium: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      low: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    };
-    return map[priority] ?? 'bg-gray-100 text-gray-800';
-  }
-
-  deleteTask(taskId: string): void {
-    if (!confirm('Delete this task?')) return;
-    this.tasksApi.deleteTask(taskId).subscribe({
-      next: () => {
-        this.tasks.update(ts => ts.filter(t => t.id !== taskId));
-        this.totalTasks.update(n => n - 1);
-      },
+    this.cy?.destroy();
+    this.cy = cytoscape({
+      container: this.graphContainer.nativeElement,
+      elements: [...taskNodes, ...edges],
+      style: [
+        {
+          selector: 'node',
+          style: {
+            label: 'data(label)',
+            'background-color': '#1976D2',
+            color: '#fff',
+            'font-size': 10,
+            width: 28,
+            height: 28,
+          },
+        },
+        {
+          selector: 'edge',
+          style: {
+            width: 2,
+            'line-color': '#90A4AE',
+            'target-arrow-shape': 'triangle',
+            'target-arrow-color': '#90A4AE',
+            'curve-style': 'bezier',
+          },
+        },
+        {
+          selector: '.critical',
+          style: {
+            'background-color': '#d32f2f',
+            'line-color': '#d32f2f',
+            'target-arrow-color': '#d32f2f',
+          },
+        },
+      ],
+      layout: { name: 'breadthfirst', directed: true, padding: 20 },
     });
-  }
 
-  openComments(task: Task): void {
-    this.selectedTask.set(task);
-    this.commentsLoading.set(true);
-    this.showNotificationPanel.set(false);
-    this.tasksApi.getComments(task.id).subscribe({
-      next: c => {
-        this.comments.set(c);
-        this.commentsLoading.set(false);
-        // Mark as read as soon as the panel is open and data is loaded
-        this.commentReadService.markRead(task.id);
-        // Also patch the task in the list so the badge disappears immediately
-        this.tasks.update(ts =>
-          ts.map(t => (t.id === task.id ? { ...t, _justRead: true } : t)),
-        );
-      },
-      error: () => this.commentsLoading.set(false),
-    });
-  }
-
-  closeComments(): void {
-    this.selectedTask.set(null);
-    this.comments.set([]);
-    this.newComment.set('');
-  }
-
-  submitComment(): void {
-    const task = this.selectedTask();
-    const content = this.newComment().trim();
-    if (!task || !content || !this.canComment()) return;
-    this.tasksApi.addComment(task.id, content).subscribe({
-      next: c => {
-        this.comments.update(cs => [...cs, c]);
-        this.newComment.set('');
-        // We just posted so stay "read"
-        this.commentReadService.markRead(task.id);
-      },
-    });
-  }
-
-  toggleNotificationPanel(): void {
-    this.showNotificationPanel.update(v => !v);
-  }
-
-  closeNotificationPanel(): void {
-    this.showNotificationPanel.set(false);
-  }
-
-  isOwnerOrAdmin(): boolean {
-    const role = this.getUserRoleName();
-    return role === 'owner' || role === 'admin';
+    cp.criticalTaskIds.forEach(id => this.cy?.$id(id).addClass('critical'));
+    cp.criticalEdges.forEach(e => this.cy?.$id(`${e.from}-${e.to}`).addClass('critical'));
   }
 
   logout(): void {

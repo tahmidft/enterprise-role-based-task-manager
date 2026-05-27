@@ -1,94 +1,42 @@
-<div class="min-h-screen flex items-center justify-center bg-background p-4">
-  <div hlmCard class="w-full max-w-md">
-    <div hlmCardHeader>
-      <h2 hlmCardTitle class="text-2xl">Create an account</h2>
-      <p hlmCardDescription>Enter your information to get started</p>
-    </div>
-    
-    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-      <div hlmCardContent class="space-y-4">
-        <div class="space-y-2">
-          <label hlmLabel for="name">Full Name</label>
-          <input 
-            hlmInput 
-            id="name" 
-            type="text" 
-            formControlName="name"
-            placeholder="John Doe"
-            class="w-full"
-          />
-          @if (registerForm.get('name')?.invalid && registerForm.get('name')?.touched) {
-            <p class="text-sm text-destructive">Name must be at least 2 characters</p>
-          }
-        </div>
+<div class="auth-wrap">
+  <mat-card class="auth-card">
+    <mat-card-header>
+      <mat-card-title>Create account</mat-card-title>
+      <mat-card-subtitle>Start managing enterprise projects</mat-card-subtitle>
+    </mat-card-header>
 
-        <div class="space-y-2">
-          <label hlmLabel for="email">Email</label>
-          <input 
-            hlmInput 
-            id="email" 
-            type="email" 
-            formControlName="email"
-            placeholder="you@example.com"
-            class="w-full"
-          />
-          @if (registerForm.get('email')?.invalid && registerForm.get('email')?.touched) {
-            <p class="text-sm text-destructive">Please enter a valid email</p>
-          }
-        </div>
+    <mat-card-content>
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Full Name</mat-label>
+          <input matInput formControlName="name" />
+        </mat-form-field>
 
-        <div class="space-y-2">
-          <label hlmLabel for="password">Password</label>
-          <input 
-            hlmInput 
-            id="password" 
-            type="password" 
-            formControlName="password"
-            placeholder="••••••••"
-            class="w-full"
-          />
-          @if (registerForm.get('password')?.invalid && registerForm.get('password')?.touched) {
-            <p class="text-sm text-destructive">Password must be at least 6 characters</p>
-          }
-        </div>
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" formControlName="email" />
+        </mat-form-field>
 
-        <div class="space-y-2">
-          <label hlmLabel for="organizationName">Organization Name</label>
-          <input 
-            hlmInput 
-            id="organizationName" 
-            type="text" 
-            formControlName="organizationName"
-            placeholder="Acme Corp"
-            class="w-full"
-          />
-          @if (registerForm.get('organizationName')?.invalid && registerForm.get('organizationName')?.touched) {
-            <p class="text-sm text-destructive">Organization name is required</p>
-          }
-        </div>
+        <mat-form-field appearance="outline">
+          <mat-label>Password</mat-label>
+          <input matInput type="password" formControlName="password" />
+        </mat-form-field>
 
-        @if (errorMessage()) {
-          <div class="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-            <p class="text-sm text-destructive">{{ errorMessage() }}</p>
-          </div>
-        }
-      </div>
+        <mat-form-field appearance="outline">
+          <mat-label>Organization Name</mat-label>
+          <input matInput formControlName="organizationName" />
+        </mat-form-field>
 
-      <div hlmCardFooter class="flex flex-col space-y-4">
-        <button 
-          hlmBtn 
-          type="submit" 
-          class="w-full"
-          [disabled]="isLoading() || registerForm.invalid"
-        >
+        <p *ngIf="errorMessage()" class="error">{{ errorMessage() }}</p>
+
+        <button mat-flat-button color="primary" type="submit" [disabled]="isLoading() || registerForm.invalid">
           {{ isLoading() ? 'Creating account...' : 'Create account' }}
         </button>
-        
-        <p class="text-sm text-center text-muted-foreground">
-          Already have an account?
-          <a routerLink="/login" class="text-primary hover:underline font-medium">Sign in</a>
-        </p>
-      </div>
-    </form>
-  </div>
+      </form>
+    </mat-card-content>
+
+    <mat-card-actions>
+      <a routerLink="/login">Already have an account? Sign in</a>
+    </mat-card-actions>
+  </mat-card>
 </div>

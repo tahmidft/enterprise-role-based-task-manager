@@ -7,9 +7,10 @@ import { Organization } from '../../entities/organization.entity';
 import { Role } from '../../entities/role.entity';
 import { Permission } from '../../entities/permission.entity';
 import { Task } from '../../entities/task.entity';
+import { Project } from '../../entities/project.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Organization, Role, Permission, Task])],
+  imports: [TypeOrmModule.forFeature([User, Organization, Role, Permission, Task, Project])],
   controllers: [SeedController],
   providers: [SeedService],
 })

@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { Permissions } from '../auth/permissions.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { TasksService, TaskFilters } from './tasks.service';
+import { TaskListQuery, TaskMutationDto, TasksService } from './tasks.service';
 import { User } from '../entities/user.entity';
 
 @Controller('tasks')
@@ -32,7 +32,7 @@ export class TasksController {
     @Query('assignedTo') assignedTo?: string,
     @Query('search') search?: string,
   ) {
-    const filters: TaskFilters = {
+    const query: TaskListQuery = {
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
       status,
@@ -40,7 +40,7 @@ export class TasksController {
       assignedTo,
       search,
     };
-    return this.tasksService.findAll(user, filters);
+    return this.tasksService.findAll(user, query);
   }
 
   @Get(':id')
@@ -51,10 +51,7 @@ export class TasksController {
 
   @Post()
   @Permissions('tasks:create')
-  create(
-    @Body() createTaskDto: Record<string, unknown>,
-    @CurrentUser() user: User,
-  ) {
+  create(@Body() createTaskDto: TaskMutationDto, @CurrentUser() user: User) {
     return this.tasksService.create(createTaskDto, user);
   }
 
@@ -62,7 +59,7 @@ export class TasksController {
   @Permissions('tasks:update')
   update(
     @Param('id') id: string,
-    @Body() updateTaskDto: Record<string, unknown>,
+    @Body() updateTaskDto: TaskMutationDto,
     @CurrentUser() user: User,
   ) {
     return this.tasksService.update(id, updateTaskDto, user);

@@ -28,7 +28,7 @@ export class AuditLog {
   @Column({ nullable: true })
   userAgent?: string;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, unknown>;
 
   @CreateDateColumn()

@@ -6,11 +6,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 
-type JwtPayload = {
-  sub: string;
-  email: string;
-};
-
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -21,11 +16,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET') ?? 'demo-secret-key',
     });
   }
 
-  async validate(payload: JwtPayload) {
+  async validate(payload: { sub: string }) {
     const user = await this.userRepository.findOne({
       where: { id: payload.sub },
       relations: ['role', 'role.permissions', 'organization'],

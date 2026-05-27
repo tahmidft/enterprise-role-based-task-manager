@@ -2,14 +2,26 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../../../services/auth';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+  ],
   templateUrl: './register.html',
-  styleUrl: './register.css',
+  styleUrl: './register.css'
 })
 export class RegisterComponent {
   private fb = inject(FormBuilder);
@@ -20,7 +32,7 @@ export class RegisterComponent {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     name: ['', Validators.required],
-    organizationName: ['', Validators.required],
+    organizationName: ['', Validators.required]
   });
 
   isLoading = signal(false);
@@ -36,9 +48,9 @@ export class RegisterComponent {
       next: () => {
         this.router.navigate(['/dashboard']);
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (error: { error?: { message?: string } }) => {
         this.isLoading.set(false);
-        this.errorMessage.set(err.error?.message || 'Registration failed. Please try again.');
+        this.errorMessage.set(error.error?.message || 'Registration failed. Please try again.');
       },
     });
   }
