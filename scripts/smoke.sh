@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Smoke test: validates health, auth, tasks, and audit endpoints.
+# Smoke test: validates health, auth, tasks, analytics, and audit endpoints.
 # Usage: API_URL=https://your-api.onrender.com ./scripts/smoke.sh
 
-set -euo pipefail
+set -uo pipefail
 
 API_URL="${API_URL:-http://localhost:3333}"
 PASS=0
@@ -14,10 +14,10 @@ check() {
   local expected="${3:-200}"
   if [ "$status" = "$expected" ]; then
     echo "  PASS  $name (HTTP $status)"
-    ((PASS++))
+    PASS=$((PASS + 1))
   else
     echo "  FAIL  $name (expected $expected, got $status)"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
   fi
 }
 
@@ -30,18 +30,18 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/api/health")
 check "GET /api/health" "$STATUS"
 
 # Login
-LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/api/auth/login" \
+LOGIN_BODY=$(curl -s -X POST "$API_URL/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"owner@techcorp.com","password":"password123"}')
-LOGIN_BODY=$(echo "$LOGIN_RESPONSE" | head -n -1)
-LOGIN_STATUS=$(echo "$LOGIN_RESPONSE" | tail -n 1)
+LOGIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API_URL/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@techcorp.com","password":"password123"}')
 check "POST /api/auth/login" "$LOGIN_STATUS"
 
-TOKEN=$(echo "$LOGIN_BODY" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || echo "")
+TOKEN=$(echo "$LOGIN_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token',''))" 2>/dev/null || echo "")
 
 if [ -z "$TOKEN" ]; then
-  echo ""
-  echo "Could not extract token — skipping authenticated checks."
+  echo "  WARN  Could not extract token — skipping authenticated checks."
 else
   # Tasks list
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/api/tasks" \
@@ -57,6 +57,15 @@ else
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/api/audit-log" \
     -H "Authorization: Bearer $TOKEN")
   check "GET /api/audit-log" "$STATUS"
+
+  # Comments on first task
+  TASKS_BODY=$(curl -s "$API_URL/api/tasks" -H "Authorization: Bearer $TOKEN")
+  FIRST_ID=$(echo "$TASKS_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); items=d.get('data',[]); print(items[0]['id'] if items else '')" 2>/dev/null || echo "")
+  if [ -n "$FIRST_ID" ]; then
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/api/tasks/$FIRST_ID/comments" \
+      -H "Authorization: Bearer $TOKEN")
+    check "GET /api/tasks/:id/comments" "$STATUS"
+  fi
 fi
 
 echo ""

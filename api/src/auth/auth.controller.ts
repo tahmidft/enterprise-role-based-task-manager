@@ -6,13 +6,11 @@ import {
   HttpStatus,
   Req,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import {
-  LoginDto,
-  RegisterDto,
-} from '@ftahmid-bcd36a19-7dca-4b0b-ba2f-a8c55e8071f0/data';
+import { LoginBodyDto, RegisterBodyDto } from './auth.dto';
 
 const REFRESH_COOKIE = 'refresh_token';
 const COOKIE_OPTIONS = {
@@ -29,15 +27,14 @@ export class AuthController {
 
   @Post('register')
   async register(
-    @Body() registerDto: RegisterDto,
+    @Body() dto: RegisterBodyDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { email, password, name, organizationName } = registerDto;
     const result = await this.authService.register(
-      email,
-      password,
-      name,
-      organizationName,
+      dto.email,
+      dto.password,
+      dto.name,
+      dto.organizationName,
     );
     res.cookie(REFRESH_COOKIE, result.refresh_token, COOKIE_OPTIONS);
     return { access_token: result.access_token, user: result.user };
@@ -46,24 +43,22 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(
-    @Body() loginDto: LoginDto,
+    @Body() dto: LoginBodyDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { email, password } = loginDto;
-    const result = await this.authService.login(email, password);
+    const result = await this.authService.login(dto.email, dto.password);
     res.cookie(REFRESH_COOKIE, result.refresh_token, COOKIE_OPTIONS);
     return { access_token: result.access_token, user: result.user };
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const rawToken: string | undefined = req.cookies?.[REFRESH_COOKIE];
-    if (!rawToken) {
-      throw new (await import('@nestjs/common').then(m => m.UnauthorizedException))(
-        'No refresh token',
-      );
-    }
+    if (!rawToken) throw new UnauthorizedException('No refresh token');
     const result = await this.authService.refresh(rawToken);
     res.cookie(REFRESH_COOKIE, result.refresh_token, COOKIE_OPTIONS);
     return { access_token: result.access_token, user: result.user };
@@ -71,11 +66,12 @@ export class AuthController {
 
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const rawToken: string | undefined = req.cookies?.[REFRESH_COOKIE];
-    if (rawToken) {
-      await this.authService.logout(rawToken);
-    }
+    if (rawToken) await this.authService.logout(rawToken);
     res.clearCookie(REFRESH_COOKIE, { ...COOKIE_OPTIONS, maxAge: 0 });
   }
 }
