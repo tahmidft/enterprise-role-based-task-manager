@@ -4,50 +4,95 @@
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Task Dashboard</h1>
         <p *ngIf="currentUser()" class="text-sm text-gray-600 dark:text-gray-400">
-          Welcome, {{ currentUser()?.name }} 
+          Welcome, {{ currentUser()?.name }}
           <span class="px-2 py-1 ml-2 text-xs rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
             {{ getUserRoleName() }}
           </span>
         </p>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
+        <button
+          *ngIf="isOwnerOrAdmin()"
+          (click)="goToAnalytics()"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors"
+        >Analytics</button>
         <app-theme-toggle />
-        <button 
+        <button
           (click)="logout()"
           class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        >
-          Logout
-        </button>
+        >Logout</button>
       </div>
     </div>
   </header>
 
   <main class="container mx-auto px-4 py-8">
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-4 p-4 flex flex-wrap gap-3 items-end">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Search</label>
+        <input
+          type="text"
+          [ngModel]="filterSearch()"
+          (ngModelChange)="filterSearch.set($event)"
+          (keyup.enter)="applyFilters()"
+          placeholder="Title or description…"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-56"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Status</label>
+        <select
+          [ngModel]="filterStatus()"
+          (ngModelChange)="filterStatus.set($event)"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        >
+          <option value="">All</option>
+          <option value="pending">Pending</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Priority</label>
+        <select
+          [ngModel]="filterPriority()"
+          (ngModelChange)="filterPriority.set($event)"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        >
+          <option value="">All</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <button
+        (click)="applyFilters()"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+      >Filter</button>
+      <button
+        (click)="clearFilters()"
+        class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      >Clear</button>
+    </div>
+
+    <!-- Task table -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
       <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Your Tasks</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage your tasks and assignments</p>
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Tasks
+            <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">({{ totalTasks() }} total)</span>
+          </h2>
         </div>
-        <button 
-          *ngIf="canCreateTasks()"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-        >
-          Create Task
-        </button>
       </div>
 
       <div class="p-6">
         <div *ngIf="isLoading()" class="flex items-center justify-center py-12">
-          <p class="text-gray-600 dark:text-gray-400">Loading tasks...</p>
+          <p class="text-gray-600 dark:text-gray-400">Loading tasks…</p>
         </div>
 
         <div *ngIf="!isLoading() && tasks().length === 0" class="flex flex-col items-center justify-center py-12 text-center">
           <p class="text-gray-600 dark:text-gray-400 mb-2">No tasks found</p>
-          <p class="text-sm text-gray-500 dark:text-gray-500">
-            <span *ngIf="canCreateTasks()">Click "Create Task" to add your first task</span>
-            <span *ngIf="!canCreateTasks()">Tasks will appear here when assigned to you</span>
-          </p>
         </div>
 
         <div *ngIf="!isLoading() && tasks().length > 0" class="overflow-x-auto">
@@ -59,7 +104,7 @@
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Priority</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Assigned To</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
-                <th *ngIf="canDeleteTasks()" class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -69,40 +114,91 @@
                   <div class="text-sm text-gray-600 dark:text-gray-400">{{ task.description }}</div>
                 </td>
                 <td class="px-4 py-4">
-                  <span 
-                    class="px-2 py-1 text-xs rounded-full font-medium"
-                    [ngClass]="getStatusBadgeClass(task.status)"
-                  >
+                  <span class="px-2 py-1 text-xs rounded-full font-medium" [ngClass]="getStatusBadgeClass(task.status)">
                     {{ task.status }}
                   </span>
                 </td>
                 <td class="px-4 py-4">
-                  <span 
-                    class="px-2 py-1 text-xs rounded-full font-medium"
-                    [ngClass]="getPriorityBadgeClass(task.priority)"
-                  >
+                  <span class="px-2 py-1 text-xs rounded-full font-medium" [ngClass]="getPriorityBadgeClass(task.priority)">
                     {{ task.priority }}
                   </span>
                 </td>
+                <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ getTaskAssigneeName(task) }}</td>
                 <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                  {{ getTaskAssigneeName(task) }}
+                  {{ task.dueDate ? (task.dueDate | date:'MMM d, y') : 'No due date' }}
                 </td>
-                <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                  {{ task.dueDate ? (task.dueDate | date: 'MMM d, y') : 'No due date' }}
-                </td>
-                <td *ngIf="canDeleteTasks()" class="px-4 py-4">
-                  <button 
+                <td class="px-4 py-4 flex gap-2">
+                  <button
+                    (click)="openComments(task)"
+                    class="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm rounded-md transition-colors"
+                  >Comments</button>
+                  <button
+                    *ngIf="canDeleteTasks()"
                     (click)="deleteTask(task.id)"
                     class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
-                  >
-                    Delete
-                  </button>
+                  >Delete</button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+
+        <!-- Pagination -->
+        <div *ngIf="totalPages() > 1" class="flex items-center justify-center gap-2 mt-6">
+          <button
+            (click)="goToPage(currentPage() - 1)"
+            [disabled]="currentPage() === 1"
+            class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >Prev</button>
+          <button
+            *ngFor="let p of pages()"
+            (click)="goToPage(p)"
+            [class.bg-blue-600]="p === currentPage()"
+            [class.text-white]="p === currentPage()"
+            class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+          >{{ p }}</button>
+          <button
+            (click)="goToPage(currentPage() + 1)"
+            [disabled]="currentPage() === totalPages()"
+            class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >Next</button>
+        </div>
       </div>
     </div>
   </main>
+</div>
+
+<!-- Comments panel overlay -->
+<div *ngIf="selectedTask()" class="fixed inset-0 bg-black/40 z-40 flex justify-end" (click)="closeComments()">
+  <div class="w-full max-w-md bg-white dark:bg-gray-800 h-full flex flex-col shadow-2xl" (click)="$event.stopPropagation()">
+    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <h3 class="font-semibold text-gray-900 dark:text-white">Comments — {{ selectedTask()?.title }}</h3>
+      <button (click)="closeComments()" class="text-gray-500 hover:text-gray-900 dark:hover:text-white text-xl leading-none">&times;</button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+      <div *ngIf="commentsLoading()" class="text-center text-gray-500 py-8">Loading…</div>
+      <div *ngIf="!commentsLoading() && comments().length === 0" class="text-center text-gray-500 py-8">No comments yet</div>
+      <div *ngFor="let c of comments()" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-sm font-medium text-gray-900 dark:text-white">{{ c.user?.name }}</span>
+          <span class="text-xs text-gray-500">{{ c.createdAt | date:'MMM d, h:mm a' }}</span>
+        </div>
+        <p class="text-sm text-gray-700 dark:text-gray-300">{{ c.content }}</p>
+      </div>
+    </div>
+    <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+      <input
+        type="text"
+        [ngModel]="newComment()"
+        (ngModelChange)="newComment.set($event)"
+        (keyup.enter)="submitComment()"
+        placeholder="Write a comment…"
+        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+      />
+      <button
+        (click)="submitComment()"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+      >Post</button>
+    </div>
+  </div>
 </div>

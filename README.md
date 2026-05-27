@@ -309,11 +309,35 @@ curl -s http://localhost:3333/api/audit-log -H "Authorization: Bearer $VIEWER_TO
 
 ## Production Considerations
 
-- Replace SQLite with PostgreSQL and add connection pooling
-- Move JWT secret and config to environment variables
-- Implement refresh token rotation
-- Add rate limiting and CSRF protection
-- Set up structured application logging and error tracking
+### Pre-deploy checklist
+
+- [ ] Set `DATABASE_URL` to a live PostgreSQL instance (Supabase / Railway)
+- [ ] Set `DB_SYNCHRONIZE=false` and run migrations (or run seed once with `DB_SYNCHRONIZE=true` then disable)
+- [ ] Set `DB_SSL=true` for cloud-hosted Postgres
+- [ ] Generate a strong `JWT_SECRET` (≥32 chars)
+- [ ] Set `JWT_EXPIRATION` to a short value (e.g. `15m`) in production
+- [ ] Set `RESEND_API_KEY` and `RESEND_FROM` for email notifications
+- [ ] Set `CORS_ORIGIN` to the Vercel frontend URL
+- [ ] Add GitHub secrets: `RENDER_DEPLOY_HOOK_URL`, `RENDER_API_URL`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+- [ ] Run `./scripts/smoke.sh` against production URL after first deploy
+
+### Implemented features
+
+| Feature | Status |
+|---|---|
+| PostgreSQL via TypeORM + `DATABASE_URL` | Done |
+| Idempotent seed | Done |
+| JWT access token + httpOnly refresh token cookie | Done |
+| `POST /auth/refresh` + `POST /auth/logout` | Done |
+| Real-time WebSocket gateway (task events, org-scoped) | Done |
+| `GET /analytics` (Owner/Admin) | Done |
+| Analytics Angular page with Chart.js | Done |
+| Resend email: task assigned, completed, due-soon cron | Done |
+| Task comments (entity + API + audit log + frontend) | Done |
+| Paginated + filtered task list (`search`, `status`, `priority`, `page`, `limit`) | Done |
+| GitHub Actions deploy (Render + Vercel) | Done |
+| GitHub Actions keep-alive ping every 10 min | Done |
+| `scripts/smoke.sh` curl smoke test | Done |
 
 ---
 

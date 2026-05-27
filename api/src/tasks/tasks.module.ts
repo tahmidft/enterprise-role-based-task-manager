@@ -5,9 +5,15 @@ import { TasksService } from './tasks.service';
 import { Task } from '../entities/task.entity';
 import { AuditService } from '../services/audit.service';
 import { AuditLog } from '../entities/audit-log.entity';
+import { WebsocketModule } from '../websocket/websocket.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Task, AuditLog])],
+  imports: [
+    TypeOrmModule.forFeature([Task, AuditLog]),
+    WebsocketModule,
+    NotificationsModule,
+  ],
   controllers: [TasksController],
   providers: [TasksService, AuditService],
 })

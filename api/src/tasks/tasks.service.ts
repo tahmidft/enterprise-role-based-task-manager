@@ -1,11 +1,34 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Inject,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task } from '../entities/task.entity';
 import { User } from '../entities/user.entity';
 import { AuditService } from '../services/audit.service';
+import { TasksGateway } from '../websocket/tasks.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
+
+export interface TaskFilters {
+  page?: number;
+  limit?: number;
+  status?: string;
+  priority?: string;
+  assignedTo?: string;
+  search?: string;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 @Injectable()
 export class TasksService {
@@ -13,21 +36,52 @@ export class TasksService {
     @InjectRepository(Task)
     private taskRepo: Repository<Task>,
     private auditService: AuditService,
+    private tasksGateway: TasksGateway,
+    private notificationsService: NotificationsService,
     @Inject(REQUEST) private request: Request,
   ) {}
 
-  async findAll(user: User): Promise<Task[]> {
+  async findAll(
+    user: User,
+    filters: TaskFilters = {},
+  ): Promise<PaginatedResult<Task>> {
+    const page = Math.max(1, filters.page ?? 1);
+    const limit = Math.min(100, Math.max(1, filters.limit ?? 20));
+    const offset = (page - 1) * limit;
     const isViewer = user.role.name === 'viewer';
 
     const query = this.taskRepo
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.assignedTo', 'assignedTo')
       .leftJoinAndSelect('task.createdBy', 'createdBy')
-      .where('task.organizationId = :organizationId', { organizationId: user.organizationId });
+      .where('task.organizationId = :organizationId', {
+        organizationId: user.organizationId,
+      });
 
     if (isViewer) {
       query.andWhere('task.assignedToId = :userId', { userId: user.id });
     }
+    if (filters.status) {
+      query.andWhere('task.status = :status', { status: filters.status });
+    }
+    if (filters.priority) {
+      query.andWhere('task.priority = :priority', {
+        priority: filters.priority,
+      });
+    }
+    if (filters.assignedTo) {
+      query.andWhere('task.assignedToId = :assignedTo', {
+        assignedTo: filters.assignedTo,
+      });
+    }
+    if (filters.search) {
+      query.andWhere(
+        '(LOWER(task.title) LIKE :search OR LOWER(task.description) LIKE :search)',
+        { search: `%${filters.search.toLowerCase()}%` },
+      );
+    }
+
+    const [data, total] = await query.skip(offset).take(limit).getManyAndCount();
 
     await this.auditService.log({
       action: 'task:list',
@@ -37,7 +91,7 @@ export class TasksService {
       userAgent: this.request.get('user-agent') || 'unknown',
     });
 
-    return query.getMany();
+    return { data, total, page, limit };
   }
 
   async findOne(id: string, user: User): Promise<Task> {
@@ -46,10 +100,7 @@ export class TasksService {
       relations: ['assignedTo', 'createdBy'],
     });
 
-    if (!task) {
-      throw new NotFoundException('Task not found');
-    }
-
+    if (!task) throw new NotFoundException('Task not found');
     if (task.organizationId !== user.organizationId) {
       throw new ForbiddenException('You do not have access to this task');
     }
@@ -66,9 +117,12 @@ export class TasksService {
     return task;
   }
 
-  async create(createTaskDto: any, user: User): Promise<Task> {
+  async create(
+    createTaskDto: Record<string, unknown>,
+    user: User,
+  ): Promise<Task> {
     const newTask = this.taskRepo.create({
-      ...createTaskDto,
+      ...(createTaskDto as Partial<Task>),
       createdById: user.id,
       organizationId: user.organizationId,
     });
@@ -83,14 +137,31 @@ export class TasksService {
       user,
       ipAddress: this.request.ip || 'unknown',
       userAgent: this.request.get('user-agent') || 'unknown',
-      metadata: { title: createTaskDto.title },
+      metadata: { title: createTaskDto['title'] as string },
     });
+
+    this.tasksGateway.emitTaskEvent('task:created', result, user.organizationId);
+
+    if (result.assignedTo?.email) {
+      void this.notificationsService.sendTaskAssigned(
+        result,
+        result.assignedTo.email,
+        result.assignedTo.name,
+      );
+    }
 
     return result;
   }
 
-  async update(id: string, updateTaskDto: any, user: User): Promise<Task> {
+  async update(
+    id: string,
+    updateTaskDto: Record<string, unknown>,
+    user: User,
+  ): Promise<Task> {
     const task = await this.findOne(id, user);
+    const prevAssignedToId = task.assignedToId;
+    const prevStatus = task.status;
+
     Object.assign(task, updateTaskDto);
     const updated = await this.taskRepo.save(task);
 
@@ -101,8 +172,44 @@ export class TasksService {
       user,
       ipAddress: this.request.ip || 'unknown',
       userAgent: this.request.get('user-agent') || 'unknown',
-      metadata: updateTaskDto,
+      metadata: updateTaskDto as Record<string, unknown>,
     });
+
+    const newAssignment =
+      updateTaskDto['assignedToId'] !== undefined &&
+      updateTaskDto['assignedToId'] !== prevAssignedToId;
+
+    this.tasksGateway.emitTaskEvent(
+      newAssignment ? 'task:assigned' : 'task:updated',
+      updated,
+      user.organizationId,
+    );
+
+    const freshTask = await this.taskRepo.findOne({
+      where: { id },
+      relations: ['assignedTo', 'createdBy'],
+    });
+
+    if (freshTask && newAssignment && freshTask.assignedTo?.email) {
+      void this.notificationsService.sendTaskAssigned(
+        freshTask,
+        freshTask.assignedTo.email,
+        freshTask.assignedTo.name,
+      );
+    }
+
+    if (
+      freshTask &&
+      prevStatus !== 'completed' &&
+      freshTask.status === 'completed' &&
+      freshTask.createdBy?.email
+    ) {
+      void this.notificationsService.sendTaskCompleted(
+        freshTask,
+        freshTask.createdBy.email,
+        freshTask.createdBy.name,
+      );
+    }
 
     return updated;
   }
@@ -120,5 +227,11 @@ export class TasksService {
       userAgent: this.request.get('user-agent') || 'unknown',
       metadata: { title: task.title },
     });
+
+    this.tasksGateway.emitTaskEvent(
+      'task:deleted',
+      { ...task, id } as Task,
+      user.organizationId,
+    );
   }
 }

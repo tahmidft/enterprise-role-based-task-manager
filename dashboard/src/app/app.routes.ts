@@ -5,23 +5,28 @@ export const appRoutes: Routes = [
   {
     path: '',
     redirectTo: '/dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full',
   },
   {
     path: 'login',
-    loadComponent: () => import('./pages/login').then(m => m.LoginComponent)
+    loadComponent: () => import('./pages/login').then(m => m.LoginComponent),
   },
   {
     path: 'register',
-    loadComponent: () => import('./pages/register').then(m => m.RegisterComponent)
+    loadComponent: () => import('./pages/register').then(m => m.RegisterComponent),
   },
   {
     path: 'dashboard',
     loadComponent: () => import('./pages/dashboard').then(m => m.DashboardComponent),
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+  },
+  {
+    path: 'analytics',
+    loadComponent: () => import('./pages/analytics').then(m => m.AnalyticsComponent),
+    canActivate: [authGuard],
   },
   {
     path: '**',
-    redirectTo: '/dashboard'
-  }
+    redirectTo: '/dashboard',
+  },
 ];
