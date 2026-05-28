@@ -1,20 +1,34 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PermissionsGuard } from '../auth/permissions.guard';
-import { Permissions } from '../auth/permissions.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../entities/user.entity';
 import { SecurityService } from './security.service';
 
 @Controller('security')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('owner')
 export class SecurityController {
   constructor(private readonly securityService: SecurityService) {}
 
   @Get('alerts')
-  @Permissions('audit:read')
-  getAlerts(@CurrentUser() user: User) {
-    return this.securityService.getAlerts(user);
+  getAlerts(@CurrentUser() user: User, @Req() req: Request) {
+    return this.securityService.getAlerts(
+      user,
+      req.ip || 'unknown',
+      req.get('user-agent') || 'unknown',
+    );
+  }
+
+  @Patch('alerts/:id/reviewed')
+  markReviewed(@Param('id') id: string, @CurrentUser() user: User, @Req() req: Request) {
+    return this.securityService.markReviewed(
+      id,
+      user,
+      req.ip || 'unknown',
+      req.get('user-agent') || 'unknown',
+    );
   }
 }
-

@@ -10,9 +10,10 @@ import {
   OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AnalyticsService, AnalyticsData } from '../../../services/analytics.service';
-import { ThemeToggleComponent } from '../components/theme-toggle';
 import { AuthService } from '../../../services/auth';
 import { Chart, registerables } from 'chart.js';
 
@@ -21,7 +22,12 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [CommonModule, RouterLink, ThemeToggleComponent],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatCardModule,
+    MatProgressSpinnerModule,
+  ],
   templateUrl: './analytics.html',
   styleUrl: './analytics.css',
 })

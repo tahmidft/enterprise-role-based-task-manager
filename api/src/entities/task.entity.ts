@@ -34,6 +34,9 @@ export class Task {
   @Column({ type: 'timestamptz', nullable: true })
   dueDate?: Date;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  startDate?: Date;
+
   @Column({ type: 'float', default: 0 })
   budgetHours!: number;
 

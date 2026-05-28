@@ -7,11 +7,17 @@ import { Permission } from '../entities/permission.entity';
 import { Task } from '../entities/task.entity';
 import { AuditLog } from '../entities/audit-log.entity';
 import { Project } from '../entities/project.entity';
+import { Comment } from '../entities/comment.entity';
+import { SecurityAlert } from '../entities/security-alert.entity';
 
 const AppDataSource = new DataSource({
   type: 'postgres',
-  url: process.env['DATABASE_URL'],
-  entities: [User, Organization, Role, Permission, Task, AuditLog, Project],
+  host: process.env['DB_HOST'] ?? 'localhost',
+  port: Number(process.env['DB_PORT'] ?? '5432'),
+  username: process.env['DB_USER'] ?? 'postgres',
+  password: process.env['DB_PASSWORD'] ?? 'postgres',
+  database: process.env['DB_NAME'] ?? 'task_manager',
+  entities: [User, Organization, Role, Permission, Task, AuditLog, Project, Comment, SecurityAlert],
   migrations: ['api/src/database/migrations/*.ts'],
   synchronize: false,
   logging: false,

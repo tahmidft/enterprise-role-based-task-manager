@@ -19,16 +19,17 @@ export class ProjectsService {
   ) {}
 
   async getEvm(projectId: string, user: User) {
+    this.ensurePlanningRole(user);
     const project = await this.ensureProjectAccess(projectId, user);
     const tasks = await this.taskRepo.find({
       where: { projectId: project.id, organizationId: user.organizationId },
       relations: ['children'],
     });
 
-    const { pv, ev, ac } = computeEvmFromTasks(tasks);
+    const { pv, ev, ac, totalBudgetHours } = computeEvmFromTasks(tasks);
     const cpi = ac > 0 ? ev / ac : 1;
     const spi = pv > 0 ? ev / pv : 1;
-    const eac = cpi > 0 ? ac + (pv - ev) / cpi : pv;
+    const eac = cpi > 0 ? totalBudgetHours / cpi : totalBudgetHours;
 
     await this.auditService.log({
       action: 'project:evm:read',
@@ -99,8 +100,9 @@ export class ProjectsService {
         taskId: task.id,
         taskTitle: task.title,
         assigneeId: task.assignedToId,
-        suggestion:
-          'Assignee is on behind-schedule critical work; consider rebalancing this non-critical task.',
+        suggestion: `Consider reassigning assignee from "${task.title}" to critical work — ${Math.round(
+          cpm.nodes.find(n => n.taskId === task.id)?.float ?? 0,
+        )} days of float available`,
       }));
 
     await this.auditService.log({
@@ -114,6 +116,13 @@ export class ProjectsService {
     });
 
     return { suggestions };
+  }
+
+  private ensurePlanningRole(user: User): void {
+    const allowed = ['owner', 'admin', 'manager'];
+    if (!allowed.includes(user.role.name)) {
+      throw new ForbiddenException('Planning APIs require Owner, Admin, or Manager role');
+    }
   }
 
   private async ensureProjectAccess(projectId: string, user: User): Promise<Project> {

@@ -19,3 +19,13 @@
 .error {
   color: #b00020;
 }
+
+.demo-hint {
+  margin: 0 16px 16px;
+  font-size: 12px;
+  color: #666;
+}
+
+.demo-hint code {
+  font-size: 11px;
+}

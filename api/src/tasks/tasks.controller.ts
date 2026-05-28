@@ -31,6 +31,7 @@ export class TasksController {
     @Query('priority') priority?: string,
     @Query('assignedTo') assignedTo?: string,
     @Query('search') search?: string,
+    @Query('tree') tree?: string,
   ) {
     const query: TaskListQuery = {
       page: page ? Number(page) : undefined,
@@ -40,6 +41,9 @@ export class TasksController {
       assignedTo,
       search,
     };
+    if (tree === 'true') {
+      return this.tasksService.findAllAsTree(user, query);
+    }
     return this.tasksService.findAll(user, query);
   }
 

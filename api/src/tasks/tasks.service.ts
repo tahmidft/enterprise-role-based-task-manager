@@ -33,7 +33,7 @@ export class TasksService {
     user: User,
     query: TaskListQuery,
   ): Promise<{ data: Task[]; total: number; page: number; limit: number }> {
-    const isViewer = user.role.name === 'viewer';
+    const isOwnTaskOnlyRole = user.role.name === 'viewer' || user.role.name === 'member';
     const page = Math.max(1, Number(query.page ?? 1));
     const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)));
 
@@ -43,7 +43,7 @@ export class TasksService {
     if (query.status) whereBase['status'] = query.status;
     if (query.priority) whereBase['priority'] = query.priority;
     if (query.assignedTo) whereBase['assignedToId'] = query.assignedTo;
-    if (isViewer) whereBase['assignedToId'] = user.id;
+    if (isOwnTaskOnlyRole) whereBase['assignedToId'] = user.id;
 
     const where = query.search
       ? [
@@ -72,6 +72,21 @@ export class TasksService {
     return { data, total, page, limit };
   }
 
+  async findAllAsTree(user: User, query: TaskListQuery): Promise<{ data: Task[] }> {
+    const list = await this.findAll(user, { ...query, page: 1, limit: 500 });
+    const tasks = list.data;
+    const byId = new Map(tasks.map(t => [t.id, { ...t, children: [] as Task[] }]));
+    const roots: Task[] = [];
+    for (const task of byId.values()) {
+      if (task.parentTaskId && byId.has(task.parentTaskId)) {
+        byId.get(task.parentTaskId)!.children.push(task);
+      } else {
+        roots.push(task);
+      }
+    }
+    return { data: roots };
+  }
+
   async findOne(id: string, user: User): Promise<Task> {
     const task = await this.taskRepo.findOne({
       where: { id },
@@ -81,6 +96,9 @@ export class TasksService {
     if (!task) throw new NotFoundException('Task not found');
     if (task.organizationId !== user.organizationId) {
       throw new ForbiddenException('You do not have access to this task');
+    }
+    if ((user.role.name === 'viewer' || user.role.name === 'member') && task.assignedToId !== user.id) {
+      throw new ForbiddenException('You can only access tasks assigned to you');
     }
 
     await this.auditService.log({
@@ -104,6 +122,8 @@ export class TasksService {
       ...createTaskDto,
       createdById: user.id,
       organizationId: user.organizationId,
+      assignedToId:
+        user.role.name === 'member' ? user.id : createTaskDto.assignedToId,
       dependsOn: depTasks,
     });
 

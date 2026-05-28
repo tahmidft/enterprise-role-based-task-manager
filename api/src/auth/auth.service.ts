@@ -10,7 +10,6 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Organization } from '../entities/organization.entity';
 import { Role } from '../entities/role.entity';
-import { RefreshToken } from '../entities/refresh-token.entity';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -23,8 +22,6 @@ export class AuthService {
     private orgRepository: Repository<Organization>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
-    @InjectRepository(RefreshToken)
-    private refreshTokenRepository: Repository<RefreshToken>,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
@@ -88,25 +85,54 @@ export class AuthService {
   }
 
   async refresh(rawToken: string) {
-    const tokenHash = this.hashToken(rawToken);
-    const stored = await this.refreshTokenRepository.findOne({
-      where: { tokenHash },
-      relations: ['user', 'user.role', 'user.role.permissions', 'user.organization'],
-    });
+    const candidates = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.refreshToken')
+      .addSelect('user.refreshTokenExpiry')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('role.permissions', 'permissions')
+      .leftJoinAndSelect('user.organization', 'organization')
+      .where('user.refreshToken IS NOT NULL')
+      .andWhere('user.refreshTokenExpiry > :now', { now: new Date() })
+      .getMany();
 
-    if (!stored || stored.revoked || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+    let user: User | undefined;
+    for (const candidate of candidates) {
+      if (
+        candidate.refreshToken &&
+        (await bcrypt.compare(rawToken, candidate.refreshToken))
+      ) {
+        user = candidate;
+        break;
+      }
     }
 
-    await this.refreshTokenRepository.update(stored.id, { revoked: true });
-
-    return this.buildTokens(stored.user);
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+    return this.buildTokens(user);
   }
 
   async logout(rawToken: string): Promise<void> {
     if (!rawToken) return;
-    const tokenHash = this.hashToken(rawToken);
-    await this.refreshTokenRepository.update({ tokenHash }, { revoked: true });
+    const candidates = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.refreshToken')
+      .where('user.refreshToken IS NOT NULL')
+      .getMany();
+
+    for (const candidate of candidates) {
+      if (
+        candidate.refreshToken &&
+        (await bcrypt.compare(rawToken, candidate.refreshToken))
+      ) {
+        await this.userRepository.update(candidate.id, {
+          refreshToken: null,
+          refreshTokenExpiry: null,
+        });
+        return;
+      }
+    }
   }
 
   async validateUser(userId: string) {
@@ -117,7 +143,10 @@ export class AuthService {
   }
 
   async invalidateAllUserRefreshTokens(userId: string): Promise<void> {
-    await this.refreshTokenRepository.update({ userId }, { revoked: true });
+    await this.userRepository.update(userId, {
+      refreshToken: null,
+      refreshTokenExpiry: null,
+    });
   }
 
   private async buildTokens(user: User) {
@@ -125,26 +154,21 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     const rawRefreshToken = crypto.randomBytes(48).toString('hex');
-    const tokenHash = this.hashToken(rawRefreshToken);
+    const tokenHash = await bcrypt.hash(rawRefreshToken, 10);
 
     const ttlDays = Number(
-      this.configService.get<string>('REFRESH_TOKEN_TTL_DAYS') ?? '30',
+      this.configService.get<string>('REFRESH_TOKEN_TTL_DAYS') ?? '7',
     );
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + ttlDays);
 
-    const rt = this.refreshTokenRepository.create({
-      tokenHash,
-      userId: user.id,
-      expiresAt,
-      revoked: false,
+    await this.userRepository.update(user.id, {
+      refreshToken: tokenHash,
+      refreshTokenExpiry: expiresAt,
     });
-    await this.refreshTokenRepository.save(rt);
 
-    return { access_token: accessToken, refresh_token: rawRefreshToken, user };
+    const { password: _password, refreshToken: _rt, refreshTokenExpiry: _rte, ...safeUser } = user;
+    return { access_token: accessToken, refresh_token: rawRefreshToken, user: safeUser };
   }
 
-  private hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
-  }
 }

@@ -1,12 +1,3 @@
-<mat-toolbar color="primary">
-  <span>Enterprise PM Dashboard</span>
-  <span class="spacer"></span>
-  <button mat-icon-button [matBadge]="securityBadge()" matBadgeColor="warn" matBadgeOverlap="false">
-    <mat-icon>security</mat-icon>
-  </button>
-  <button mat-stroked-button color="accent" (click)="logout()">Logout</button>
-</mat-toolbar>
-
 <div class="page">
   <div *ngIf="loading()" class="loading-wrap">
     <mat-spinner diameter="36"></mat-spinner>
@@ -51,14 +42,15 @@
     </section>
 
     <section class="grid-two">
-      <mat-card>
+      <mat-card class="wbs-card">
         <mat-card-title>WBS (mat-tree)</mat-card-title>
-        <mat-card-content>
+        <mat-card-content class="panel-content wbs-panel-content">
           <mat-tree [dataSource]="treeDataSource" [treeControl]="treeControl">
             <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding>
               <button mat-icon-button disabled></button>
               <strong>{{ node.title }}</strong>
               <span class="muted">({{ node.status }} · {{ node.completionPercent }}%)</span>
+              <button mat-button type="button" (click)="createSubtask(node)">+ Subtask</button>
             </mat-tree-node>
             <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild">
               <div class="mat-tree-node">
@@ -67,6 +59,10 @@
                 </button>
                 <strong>{{ node.title }}</strong>
                 <span class="muted">({{ node.status }} · {{ node.completionPercent }}%)</span>
+                <span *ngIf="evm() && !node.parentTaskId" class="rollup">
+                  SPI {{ evm()!.spi | number:'1.2-2' }} · CPI {{ evm()!.cpi | number:'1.2-2' }}
+                </span>
+                <button mat-button type="button" (click)="createSubtask(node)">+ Subtask</button>
               </div>
               <div [class.tree-invisible]="!treeControl.isExpanded(node)">
                 <ng-container matTreeNodeOutlet></ng-container>
@@ -76,9 +72,9 @@
         </mat-card-content>
       </mat-card>
 
-      <mat-card>
+      <mat-card class="graph-card">
         <mat-card-title>CPM Dependency Graph (Cytoscape)</mat-card-title>
-        <mat-card-content>
+        <mat-card-content class="panel-content graph-card-content">
           <div #graphContainer class="graph"></div>
         </mat-card-content>
       </mat-card>
@@ -87,7 +83,7 @@
     <section class="grid-two">
       <mat-card>
         <mat-card-title>Kanban (CDK drag-drop)</mat-card-title>
-        <mat-card-content class="kanban">
+        <mat-card-content class="kanban" cdkDropListGroup>
           <div class="column">
             <h4>Pending</h4>
             <div cdkDropList [cdkDropListData]="pending()" class="list" (cdkDropListDropped)="drop($event, 'pending')">
@@ -109,14 +105,21 @@
         </mat-card-content>
       </mat-card>
 
-      <mat-card>
-        <mat-card-title>Security Alerts</mat-card-title>
+      <mat-card *ngIf="isOwner()" id="security">
+        <mat-card-title>Security Alerts (Owner)</mat-card-title>
         <mat-card-content>
           <div *ngIf="securityAlerts().length === 0" class="muted">No high-risk sessions</div>
-          <div *ngFor="let alert of securityAlerts()">
+          <div *ngFor="let alert of securityAlerts()" class="alert-row">
             <mat-chip color="warn" selected>{{ alert.level }} ({{ alert.riskScore }})</mat-chip>
             <span>{{ alert.userEmail || alert.userId }}</span>
-            <div class="muted">{{ alert.reasons.join(', ') }}</div>
+            <div class="muted">{{ alert.createdAt | date:'short' }} — {{ alert.reasons.join(', ') }}</div>
+            <button
+              mat-stroked-button
+              *ngIf="!alert.reviewed"
+              (click)="markAlertReviewed(alert.id)"
+            >
+              Mark reviewed
+            </button>
           </div>
         </mat-card-content>
       </mat-card>
@@ -156,12 +159,13 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card *ngIf="resourceSuggestions().length > 0">
+    <mat-card *ngIf="visibleSuggestions().length > 0">
       <mat-card-title>Resource Leveling Recommendations</mat-card-title>
       <mat-card-content>
-        <mat-card *ngFor="let suggestion of resourceSuggestions()" class="suggestion-card">
+        <mat-card *ngFor="let suggestion of visibleSuggestions()" class="suggestion-card">
           <mat-card-subtitle>{{ suggestion.taskTitle }}</mat-card-subtitle>
           <p>{{ suggestion.suggestion }}</p>
+          <button mat-button (click)="dismissSuggestion(suggestion.taskId)">Dismiss</button>
         </mat-card>
       </mat-card-content>
     </mat-card>

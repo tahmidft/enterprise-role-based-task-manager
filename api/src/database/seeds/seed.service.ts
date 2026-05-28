@@ -50,12 +50,19 @@ export class SeedService {
       {
         name: 'manager',
         description: 'Project manager',
-        permissions: ['tasks:create', 'tasks:read', 'tasks:update', 'audit:read'],
+        permissions: [
+          'tasks:create',
+          'tasks:read',
+          'tasks:update',
+          'tasks:delete',
+          'users:read',
+          'audit:read',
+        ],
       },
       {
         name: 'member',
         description: 'Team member',
-        permissions: ['tasks:read', 'tasks:update'],
+        permissions: ['tasks:create', 'tasks:read', 'tasks:update'],
       },
       {
         name: 'viewer',
@@ -92,7 +99,10 @@ export class SeedService {
       const [firstName, ...rest] = name.split(' ');
       const lastName = rest.join(' ') || 'User';
       const existing = await this.userRepo.findOne({ where: { email } });
-      if (existing) return existing;
+      if (existing) {
+        existing.password = hashedPassword;
+        return this.userRepo.save(existing);
+      }
       return this.userRepo.save(
         this.userRepo.create({
           email,
@@ -113,14 +123,22 @@ export class SeedService {
     const viewer = await ensureUser('viewer@techcorp.com', 'Viewer User', 'viewer', techCorp.id);
     await ensureUser('owner@startuplab.com', 'Startup Owner', 'owner', startupLab.id);
 
-    await this.projectRepo.upsert(
-      [
-        { name: 'Website Revamp', description: 'Q4 delivery project', organizationId: techCorp.id },
-        { name: 'Growth Initiative', description: 'Scale-up project', organizationId: techCorp.id },
-      ],
-      ['name', 'organizationId'],
-    );
-    const websiteProject = await this.projectRepo.findOneByOrFail({ name: 'Website Revamp', organizationId: techCorp.id });
+    const projectSeeds = [
+      { name: 'Website Revamp', description: 'Q4 delivery project', organizationId: techCorp.id },
+      { name: 'Growth Initiative', description: 'Scale-up project', organizationId: techCorp.id },
+    ];
+    for (const projectSeed of projectSeeds) {
+      const existingProject = await this.projectRepo.findOne({
+        where: { name: projectSeed.name, organizationId: projectSeed.organizationId },
+      });
+      if (!existingProject) {
+        await this.projectRepo.save(this.projectRepo.create(projectSeed));
+      }
+    }
+    const websiteProject = await this.projectRepo.findOneByOrFail({
+      name: 'Website Revamp',
+      organizationId: techCorp.id,
+    });
 
     const existingTasks = await this.taskRepo.countBy({ projectId: websiteProject.id });
     if (existingTasks === 0) {
@@ -130,6 +148,7 @@ export class SeedService {
           description: 'Parent task for dashboard delivery',
           status: 'in-progress',
           priority: 'high',
+          startDate: new Date('2026-01-01'),
           dueDate: new Date('2026-12-30'),
           budgetHours: 120,
           actualHours: 64,
@@ -147,6 +166,7 @@ export class SeedService {
           description: 'Backend API implementation',
           status: 'completed',
           priority: 'high',
+          startDate: new Date('2026-02-01'),
           dueDate: new Date('2026-11-20'),
           budgetHours: 40,
           actualHours: 44,
@@ -165,6 +185,7 @@ export class SeedService {
           description: 'Frontend delivery',
           status: 'in-progress',
           priority: 'medium',
+          startDate: new Date('2026-03-01'),
           dueDate: new Date('2026-12-15'),
           budgetHours: 50,
           actualHours: 20,
@@ -183,6 +204,7 @@ export class SeedService {
           description: 'Depends on FE + BE completion',
           status: 'pending',
           priority: 'low',
+          startDate: new Date('2026-06-01'),
           dueDate: new Date('2026-12-28'),
           budgetHours: 10,
           actualHours: 0,

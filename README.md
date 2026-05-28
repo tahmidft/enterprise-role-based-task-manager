@@ -79,11 +79,20 @@ This project implements a multi-tenant task management system with a focus on se
 
 ## Quick Start
 
-**Prerequisites:** Node.js 18+, npm
+**Prerequisites:** Node.js 18+, npm, Docker
 
 ```bash
 # Install dependencies
 npm install
+
+# Start PostgreSQL
+docker compose up -d postgres
+
+# Configure env
+cp .env.example .env
+
+# Run DB migrations
+npm run migration:run
 
 # Start the backend API (http://localhost:3333/api)
 npx nx serve api
@@ -101,6 +110,8 @@ npx nx serve dashboard
 |---|---|---|---|
 | Owner | owner@techcorp.com | password123 | Full system access + user management |
 | Admin | admin@techcorp.com | password123 | Task CRUD + audit logs |
+| Manager | manager@techcorp.com | password123 | Task create/read/update + users:read + audit access |
+| Member | member@techcorp.com | password123 | Task create/read/update (own assigned tasks only) |
 | Viewer | viewer@techcorp.com | password123 | Read-only, assigned tasks only |
 
 ---
@@ -113,42 +124,49 @@ npx nx serve dashboard
 ┌─────────────────────────────────────────────────┐
 │                    OWNER                        │
 │  + All Permissions                              │
-│  + User Management (create, read, update, del) │
-│  + Audit Log Access                             │
-│  + Task Management (full CRUD)                  │
 └─────────────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
 │                    ADMIN                        │
-│  + Task Management (full CRUD)                  │
-│  + User Management (create, read, update)       │
+│  + Task CRUD + user create/read/update          │
 │  + Audit Log Access                             │
-│  - Cannot delete users                          │
+└─────────────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│                   MANAGER                       │
+│  + tasks:create/read/update                     │
+│  + users:read + audit:read                      │
+└─────────────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│                   MEMBER                        │
+│  + tasks:create/read/update                     │
+│  - Limited to own assigned tasks                │
 └─────────────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
 │                   VIEWER                        │
 │  + Read assigned tasks only                     │
-│  - Cannot create, update, or delete             │
-│  - Cannot access audit logs                     │
 └─────────────────────────────────────────────────┘
 ```
 
 ### Permission Matrix
 
-| Permission | Owner | Admin | Viewer |
-|---|---|---|---|
-| tasks:create | Yes | Yes | No |
-| tasks:read | Yes | Yes | Assigned only |
-| tasks:update | Yes | Yes | No |
-| tasks:delete | Yes | Yes | No |
-| users:create | Yes | Yes | No |
-| users:read | Yes | Yes | Limited |
-| users:update | Yes | Yes | No |
-| users:delete | Yes | No | No |
-| audit:read | Yes | Yes | No |
+| Permission | Owner | Admin | Manager | Member | Viewer |
+|---|---|---|---|---|---|
+| tasks:create | Yes | Yes | Yes | Yes | No |
+| tasks:read | Yes | Yes | Yes | Own only | Assigned only |
+| tasks:update | Yes | Yes | Yes | Own only | No |
+| tasks:delete | Yes | Yes | Yes | No | No |
+| users:create | Yes | Yes | No | No | No |
+| users:read | Yes | Yes | Yes | No | Yes (limited) |
+| users:update | Yes | Yes | No | No | No |
+| users:delete | Yes | No | No | No | No |
+| audit:read | Yes | Yes | Yes | No | No |
 
 ### Authorization Flow
 
@@ -171,6 +189,8 @@ All task and audit endpoints require `Authorization: Bearer <token>`.
 ```bash
 POST /auth/login
 POST /auth/register
+POST /auth/refresh
+POST /auth/logout
 ```
 
 ### Tasks
@@ -194,7 +214,22 @@ GET /projects/:id/resource-leveling
 ### Security APIs
 
 ```bash
-GET /security/alerts               # Requires audit:read
+GET /security/alerts               # Owner only — persisted HIGH-risk sessions
+PATCH /security/alerts/:id/reviewed
+```
+
+### Analytics & Comments
+
+```bash
+GET /analytics                     # Requires audit:read
+GET /tasks/:taskId/comments        # Requires tasks:read
+POST /tasks/:taskId/comments       # Requires tasks:update
+```
+
+### Tasks (WBS)
+
+```bash
+GET /tasks?tree=true               # Nested task hierarchy
 ```
 
 ### Audit Logs
@@ -272,7 +307,7 @@ organizations    (id, name, description, createdAt, updatedAt)
 roles            (id, name, description)
 permissions      (id, name, description)
 role_permissions (roleId, permissionId)
-users            (id, email, password, name, roleId, organizationId)
+users            (id, email, password, name, roleId, organizationId, refreshToken, refreshTokenExpiry)
 tasks            (id, title, description, status, priority, dueDate, assignedToId, createdById, organizationId)
 audit_logs       (id, action, resource, resourceId, userId, ipAddress, userAgent, metadata, createdAt)
 ```
@@ -321,13 +356,45 @@ curl -s http://localhost:3333/api/audit-log -H "Authorization: Bearer $VIEWER_TO
 
 ---
 
+## Defense & Aerospace Alignment
+
+This system implements **Earned Value Management (EVM)** metrics—SPI, CPI, and EAC—aligned with **DFARS 234.203** reporting expectations for contractor performance measurement. **Critical Path Method (CPM)** dependency graphs mirror scheduling workflows used in NASA and Lockheed Martin program offices: topological ordering, float calculation, and critical-path highlighting support what-if analysis before slip impacts milestones.
+
+## Algorithms
+
+### EVM (per project, with WBS roll-up)
+
+```
+PV = Σ(budgetHours) × (daysElapsed / totalProjectDays)
+EV = Σ(budgetHours × completionPercent / 100)
+AC = Σ(actualHours)
+SPI = EV / PV
+CPI = EV / AC
+EAC = AC + (PV - EV) / CPI   (when CPI > 0)
+```
+
+Subtasks roll up to parent WBS nodes before project-level aggregation.
+
+### CPM (topological sort + float)
+
+```
+1. Build adjacency list from task_dependencies
+2. Kahn's algorithm → topological order (400 if cycle)
+3. Forward pass: ES = max(EF of predecessors), EF = ES + duration
+4. Backward pass: LF = min(LS of successors), LS = LF - duration
+5. Float = LS - ES; float = 0 → critical path
+```
+
+Implements EVM metrics (SPI/CPI/EAC) aligned with DFARS 234.203 requirements.
+
 ## Production Considerations
 
-- PostgreSQL migration is now complete (`DATABASE_URL`, migrations, jsonb/timestamptz types)
-- EVM + WBS roll-up + CPM + dependency graph implemented
-- Nightly priority aging scheduler with audit entries
-- Security anomaly scoring for off-hours, bulk deletes, privilege attempts, and IP drift
-- Angular Material migration + CDK drag-and-drop Kanban implemented
+- Use PostgreSQL via `docker compose up -d postgres`; set `DB_SYNCHRONIZE=false` and run `npm run migration:run`
+- Credentials: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`, `REFRESH_TOKEN_TTL_DAYS`
+- Access tokens: 15 minutes; refresh tokens: bcrypt-hashed on `users`, 7-day TTL, rotated on each refresh
+- All schema changes via TypeORM migrations under `api/src/database/migrations/`
+- EVM, WBS (`?tree=true`), CPM, priority aging, security alerts (`security_alerts` table), and resource leveling are implemented
+- Angular Material UI with CDK Kanban; Tailwind removed from global styles
 
 ---
 

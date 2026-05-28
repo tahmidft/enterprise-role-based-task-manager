@@ -19,7 +19,7 @@ import { Organization } from '../entities/organization.entity';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') ?? 'demo-secret-key',
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRATION') ?? '24h') as JwtSignOptions['expiresIn'],
+          expiresIn: (configService.get<string>('JWT_EXPIRATION') ?? '15m') as JwtSignOptions['expiresIn'],
         },
       }),
     }),

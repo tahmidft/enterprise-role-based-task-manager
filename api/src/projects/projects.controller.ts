@@ -28,5 +28,11 @@ export class ProjectsController {
   getResourceLeveling(@Param('id') projectId: string, @CurrentUser() user: User) {
     return this.projectsService.getResourceLeveling(projectId, user);
   }
+
+  @Get(':id/resource-suggestions')
+  @Permissions('tasks:read')
+  getResourceSuggestions(@Param('id') projectId: string, @CurrentUser() user: User) {
+    return this.projectsService.getResourceLeveling(projectId, user);
+  }
 }
 

@@ -2,6 +2,8 @@
 
 :root {
   --mdc-theme-primary: #1976d2;
+  --mdc-theme-secondary: #ffa000;
+  --mdc-theme-error: #d32f2f;
 }
 
 html,

@@ -1,0 +1,42 @@
+<mat-sidenav-container class="shell">
+  <mat-sidenav mode="side" opened class="sidenav">
+    <div class="brand">Enterprise PM</div>
+    <mat-nav-list>
+      <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
+        <mat-icon matListItemIcon>dashboard</mat-icon>
+        <span matListItemTitle>Dashboard</span>
+      </a>
+      <a mat-list-item routerLink="/analytics" routerLinkActive="active">
+        <mat-icon matListItemIcon>analytics</mat-icon>
+        <span matListItemTitle>Analytics</span>
+      </a>
+      <a
+        *ngIf="isOwner()"
+        mat-list-item
+        routerLink="/dashboard"
+        fragment="security"
+        routerLinkActive="active"
+      >
+        <mat-icon
+          matListItemIcon
+          [matBadge]="securityBadge() > 0 ? securityBadge() : null"
+          matBadgeColor="warn"
+        >
+          security
+        </mat-icon>
+        <span matListItemTitle>Security Alerts</span>
+      </a>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar color="primary">
+      <span>{{ userEmail() }}</span>
+      <span class="spacer"></span>
+      <button mat-stroked-button (click)="logout()">Logout</button>
+    </mat-toolbar>
+    <main class="content">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

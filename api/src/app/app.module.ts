@@ -15,6 +15,8 @@ import { databaseConfigAsync } from '../config/database.config';
 import { ProjectsModule } from '../projects/projects.module';
 import { SecurityModule } from '../security/security.module';
 import { PriorityAgingModule } from '../tasks/priority-aging.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
+import { CommentsModule } from '../comments/comments.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { PriorityAgingModule } from '../tasks/priority-aging.module';
     ProjectsModule,
     SecurityModule,
     PriorityAgingModule,
+    AnalyticsModule,
+    CommentsModule,
   ],
   controllers: [AppController, AuditController],
   providers: [AppService, AuditService],

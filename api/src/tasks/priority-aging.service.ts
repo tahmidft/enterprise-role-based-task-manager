@@ -1,9 +1,7 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 import { Task } from '../entities/task.entity';
 import { AuditService } from '../services/audit.service';
 
@@ -12,13 +10,12 @@ export class PriorityAgingService {
   constructor(
     @InjectRepository(Task) private readonly taskRepo: Repository<Task>,
     private readonly auditService: AuditService,
-    @Inject(REQUEST) private readonly request: Request,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async runNightlyEscalation() {
-    const lowToMediumDays = Number(process.env['LOW_TO_MEDIUM_DAYS'] ?? 3);
-    const mediumToHighDays = Number(process.env['MEDIUM_TO_HIGH_DAYS'] ?? 6);
+    const lowToMediumDays = Number(process.env['LOW_TO_MEDIUM_DAYS'] ?? 5);
+    const mediumToHighDays = Number(process.env['MEDIUM_TO_HIGH_DAYS'] ?? 3);
     const now = new Date();
 
     const tasks = await this.taskRepo.find({ where: { status: 'pending' } });
@@ -27,8 +24,14 @@ export class PriorityAgingService {
       const oldPriority = task.priority;
       let newPriority = oldPriority;
 
-      if (oldPriority === 'low' && ageDays >= lowToMediumDays) newPriority = 'medium';
-      if (oldPriority === 'medium' && ageDays >= mediumToHighDays) newPriority = 'high';
+      if (oldPriority === 'low' && ageDays >= lowToMediumDays) {
+        newPriority = 'medium';
+      } else if (
+        oldPriority === 'medium' &&
+        ageDays >= lowToMediumDays + mediumToHighDays
+      ) {
+        newPriority = 'high';
+      }
 
       if (newPriority !== oldPriority) {
         task.priority = newPriority;
@@ -37,8 +40,8 @@ export class PriorityAgingService {
           action: 'task:priority-escalated',
           resource: 'task',
           resourceId: task.id,
-          ipAddress: this.request.ip || 'system',
-          userAgent: this.request.get('user-agent') || 'scheduler',
+          ipAddress: 'system',
+          userAgent: 'priority-aging-scheduler',
           metadata: { oldPriority, newPriority, ageDays },
         });
       }

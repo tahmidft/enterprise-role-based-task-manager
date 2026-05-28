@@ -36,6 +36,12 @@ export class User {
   @Column()
   organizationId!: string;
 
+  @Column({ type: 'varchar', nullable: true, select: false })
+  refreshToken?: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true, select: false })
+  refreshTokenExpiry?: Date | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -7,8 +7,20 @@ import { Permission } from '../entities/permission.entity';
 import { Task } from '../entities/task.entity';
 import { AuditLog } from '../entities/audit-log.entity';
 import { Project } from '../entities/project.entity';
+import { Comment } from '../entities/comment.entity';
+import { SecurityAlert } from '../entities/security-alert.entity';
 
-const entities = [User, Organization, Role, Permission, Task, AuditLog, Project];
+const entities = [
+  User,
+  Organization,
+  Role,
+  Permission,
+  Task,
+  AuditLog,
+  Project,
+  Comment,
+  SecurityAlert,
+];
 
 export const buildDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   const synchronize = configService.get<string>('DB_SYNCHRONIZE') === 'true';
@@ -17,7 +29,11 @@ export const buildDatabaseConfig = (configService: ConfigService): TypeOrmModule
 
   return {
     type: 'postgres',
-    url: configService.get<string>('DATABASE_URL'),
+    host: configService.get<string>('DB_HOST', 'localhost'),
+    port: Number(configService.get<string>('DB_PORT', '5432')),
+    username: configService.get<string>('DB_USER', 'postgres'),
+    password: configService.get<string>('DB_PASSWORD', 'postgres'),
+    database: configService.get<string>('DB_NAME', 'task_manager'),
     entities,
     migrations: ['dist/api/src/database/migrations/*.js'],
     migrationsTableName: 'typeorm_migrations',

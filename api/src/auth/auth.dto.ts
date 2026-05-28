@@ -26,3 +26,9 @@ export class RegisterBodyDto {
   @IsString()
   organizationName!: string;
 }
+
+export class RefreshBodyDto {
+  @IsNotEmpty()
+  @IsString()
+  refreshToken!: string;
+}

@@ -6,6 +6,8 @@ export type EvmTask = {
   actualHours?: number;
   completionPercent?: number;
   parentTaskId?: string;
+  startDate?: Date;
+  dueDate?: Date;
 };
 
 export type CpmTask = {
@@ -17,7 +19,9 @@ export type CpmTask = {
 
 type Rollup = { budget: number; actual: number; ev: number };
 
-export function computeEvmFromTasks(tasks: EvmTask[]) {
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+export function computeEvmFromTasks(tasks: EvmTask[], referenceDate = new Date()) {
   const childrenByParent = new Map<string, EvmTask[]>();
   const rootTasks: EvmTask[] = [];
 
@@ -56,7 +60,29 @@ export function computeEvmFromTasks(tasks: EvmTask[]) {
     { budget: 0, actual: 0, ev: 0 },
   );
 
-  return { pv: totals.budget, ev: totals.ev, ac: totals.actual };
+  const starts = tasks
+    .map(t => (t.startDate ? new Date(t.startDate) : null))
+    .filter((d): d is Date => d !== null);
+  const ends = tasks
+    .map(t => (t.dueDate ? new Date(t.dueDate) : null))
+    .filter((d): d is Date => d !== null);
+
+  const projectStart =
+    starts.length > 0 ? new Date(Math.min(...starts.map(d => d.getTime()))) : referenceDate;
+  const projectEnd =
+    ends.length > 0
+      ? new Date(Math.max(...ends.map(d => d.getTime())))
+      : new Date(projectStart.getTime() + 30 * DAY_MS);
+
+  const totalProjectDays = Math.max(1, (projectEnd.getTime() - projectStart.getTime()) / DAY_MS);
+  const daysElapsed = Math.min(
+    totalProjectDays,
+    Math.max(0, (referenceDate.getTime() - projectStart.getTime()) / DAY_MS),
+  );
+
+  const pv = totals.budget * (daysElapsed / totalProjectDays);
+
+  return { pv, ev: totals.ev, ac: totals.actual, totalBudgetHours: totals.budget };
 }
 
 export function computeCriticalPath(tasks: CpmTask[]) {
@@ -95,9 +121,10 @@ export function computeCriticalPath(tasks: CpmTask[]) {
   }
 
   if (topo.length !== tasks.length) {
-    throw new BadRequestException(
-      'Dependency cycle detected in project tasks. Please remove circular dependencies.',
-    );
+    const remaining = tasks.filter(t => !topo.includes(t.id));
+    const a = remaining[0]?.title ?? remaining[0]?.id ?? 'A';
+    const b = remaining[1]?.title ?? remaining[1]?.id ?? remaining[0]?.id ?? 'B';
+    throw new BadRequestException(`Circular dependency detected between tasks ${a} and ${b}`);
   }
 
   const es = new Map<string, number>();
@@ -124,15 +151,17 @@ export function computeCriticalPath(tasks: CpmTask[]) {
     return {
       taskId: id,
       title: taskById.get(id)?.title ?? 'Unknown',
+      duration: duration(taskById.get(id)!),
       es: es.get(id) ?? 0,
       ef: ef.get(id) ?? 0,
       ls: ls.get(id) ?? 0,
       lf: lf.get(id) ?? 0,
       float,
+      criticalPath: float <= 0.000001,
     };
   });
 
-  const criticalTaskIds = nodes.filter(n => n.float <= 0.000001).map(n => n.taskId);
+  const criticalTaskIds = nodes.filter(n => n.criticalPath).map(n => n.taskId);
   const criticalEdges: Array<{ from: string; to: string }> = [];
   for (const from of criticalTaskIds) {
     for (const to of outgoing.get(from) ?? []) {
@@ -142,4 +171,3 @@ export function computeCriticalPath(tasks: CpmTask[]) {
 
   return { projectDuration: projectFinish, nodes, criticalTaskIds, criticalEdges };
 }
-

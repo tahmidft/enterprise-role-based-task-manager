@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginBodyDto, RegisterBodyDto } from './auth.dto';
+import { LoginBodyDto, RefreshBodyDto, RegisterBodyDto } from './auth.dto';
 
 const REFRESH_COOKIE = 'refresh_token';
 const COOKIE_OPTIONS = {
@@ -18,7 +18,7 @@ const COOKIE_OPTIONS = {
   sameSite: 'strict' as const,
   secure: process.env['NODE_ENV'] === 'production',
   path: '/api/auth',
-  maxAge: 30 * 24 * 60 * 60 * 1000,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 @Controller('auth')
@@ -54,10 +54,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
   async refresh(
+    @Body() body: Partial<RefreshBodyDto>,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const rawToken: string | undefined = req.cookies?.[REFRESH_COOKIE];
+    const rawToken: string | undefined = req.cookies?.[REFRESH_COOKIE] ?? body.refreshToken;
     if (!rawToken) throw new UnauthorizedException('No refresh token');
     const result = await this.authService.refresh(rawToken);
     res.cookie(REFRESH_COOKIE, result.refresh_token, COOKIE_OPTIONS);
@@ -70,7 +71,8 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const rawToken: string | undefined = req.cookies?.[REFRESH_COOKIE];
+    const rawToken: string | undefined =
+      req.cookies?.[REFRESH_COOKIE] ?? (req.body as { refreshToken?: string })?.refreshToken;
     if (rawToken) await this.authService.logout(rawToken);
     res.clearCookie(REFRESH_COOKIE, { ...COOKIE_OPTIONS, maxAge: 0 });
   }
