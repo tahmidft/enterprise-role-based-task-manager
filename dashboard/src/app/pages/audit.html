@@ -1,0 +1,115 @@
+<div class="page audit-page">
+  <p class="section-eyebrow">Compliance</p>
+  <div class="audit-top-actions">
+    <button mat-stroked-button type="button" (click)="expandAll()">
+      <i class="ti ti-arrows-maximize"></i> Expand all
+    </button>
+    <button mat-stroked-button type="button" (click)="collapseAll()">
+      <i class="ti ti-arrows-minimize"></i> Collapse all
+    </button>
+    <button mat-stroked-button type="button" (click)="copyAll()">
+      <i class="ti ti-clipboard"></i> Copy all
+    </button>
+    <button mat-stroked-button type="button" [matMenuTriggerFor]="exportMenu">
+      <i class="ti ti-download"></i> Export
+    </button>
+    <mat-menu #exportMenu="matMenu">
+      <button mat-menu-item (click)="exportCsv()">Export as CSV</button>
+      <button mat-menu-item (click)="exportTxt()">Export as TXT</button>
+    </mat-menu>
+  </div>
+
+  <div class="audit-toolbar">
+    <div class="search-pill audit-search">
+      <i class="ti ti-search"></i>
+      <input
+        type="search"
+        placeholder="Search action, resource, user…"
+        [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        aria-label="Search audit log"
+      />
+    </div>
+    <div class="date-filters">
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>From</mat-label>
+        <input matInput [matDatepicker]="fromPicker" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)" />
+        <mat-datepicker-toggle matIconSuffix [for]="fromPicker"></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>To</mat-label>
+        <input matInput [matDatepicker]="toPicker" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)" />
+        <mat-datepicker-toggle matIconSuffix [for]="toPicker"></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div class="filter-chips">
+    <button
+      type="button"
+      *ngFor="let chip of filterChips"
+      class="filter-chip"
+      [class.filter-chip--active]="actionFilter() === chip.id"
+      (click)="setActionFilter(chip.id)"
+    >
+      {{ chip.label }}
+    </button>
+  </div>
+
+  <div *ngIf="loading()" class="loading-wrap">
+    <mat-spinner diameter="36"></mat-spinner>
+  </div>
+
+  <div *ngIf="!loading() && restricted()" class="access-wall">
+    <i class="ti ti-lock"></i>
+    <h2>Access restricted</h2>
+    <p>
+      Audit logs are available to Admins and above. Contact your organization owner if you need access.
+    </p>
+  </div>
+
+  <p *ngIf="error()" class="error">{{ error() }}</p>
+
+  <div *ngIf="!loading() && !error() && !restricted()" class="audit-list">
+    <article
+      *ngFor="let row of filteredRows()"
+      class="audit-entry"
+      [class.audit-entry--expanded]="isExpanded(row.id)"
+      (click)="toggleExpand(row)"
+    >
+      <div [class]="iconClass(row.action)">
+        <i class="ti" [class]="iconName(row.action)"></i>
+      </div>
+      <div class="audit-entry-body">
+        <div class="audit-action">{{ actionLabel(row.action) }}</div>
+        <div class="audit-resource">{{ row.resource }}</div>
+        <div class="audit-summary muted">{{ summary(row) }}</div>
+        <div class="audit-expanded" *ngIf="isExpanded(row.id)" (click)="$event.stopPropagation()">
+          <div class="meta-grid">
+            <div><strong>User:</strong> {{ row.user?.name || 'Unknown' }} ({{ row.user?.email || 'n/a' }})</div>
+            <div><strong>Role:</strong> {{ row.metadata?.['role'] || 'n/a' }}</div>
+            <div><strong>IP Address:</strong> {{ row.ipAddress || 'n/a' }}</div>
+            <div><strong>User Agent:</strong> {{ row.metadata?.['userAgent'] || 'n/a' }}</div>
+            <div><strong>Resource ID:</strong> {{ row.resourceId || 'n/a' }}</div>
+            <div><strong>Timestamp:</strong> {{ row.createdAt }}</div>
+          </div>
+          <pre class="metadata-pre">{{ row.metadata | json }}</pre>
+          <button mat-stroked-button type="button" (click)="copyEntry(row); $event.stopPropagation()">
+            <i class="ti ti-clipboard"></i> Copy
+          </button>
+        </div>
+      </div>
+      <div class="audit-entry-side">
+        <div class="audit-time">{{ row.createdAt | date: 'short' }}</div>
+        <span class="audit-avatar">{{ userInitials(row) }}</span>
+      </div>
+    </article>
+
+    <div *ngIf="filteredRows().length === 0" class="audit-empty">
+      <i class="ti ti-clipboard-off empty-icon"></i>
+      <p>No audit events found</p>
+    </div>
+  </div>
+</div>
