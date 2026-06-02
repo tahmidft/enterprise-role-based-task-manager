@@ -1,0 +1,231 @@
+<div class="page settings-page">
+  <p class="section-eyebrow">Preferences</p>
+
+  <div class="settings-layout">
+    <nav class="settings-nav" aria-label="Settings sections">
+      <button
+        type="button"
+        *ngFor="let s of sections"
+        class="settings-nav-item"
+        [class.settings-nav-item--active]="activeSection() === s.id"
+        (click)="selectSection(s.id)"
+      >
+        <i class="ti" [class]="s.icon"></i>
+        <span>{{ s.label }}</span>
+      </button>
+    </nav>
+
+    <div class="settings-panel">
+      <!-- Account -->
+      <section *ngIf="activeSection() === 'account'" class="settings-section">
+        <h2 class="panel-title">Account</h2>
+        <mat-card class="settings-card profile-card">
+          <div class="profile-header">
+            <div class="profile-avatar-wrap">
+              <span class="profile-avatar-lg">{{ userInitials() }}</span>
+              <span class="avatar-edit-overlay"><i class="ti ti-camera"></i></span>
+            </div>
+            <div class="profile-meta">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Display name</mat-label>
+                <input matInput [value]="displayName()" (input)="displayName.set($any($event.target).value)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Email</mat-label>
+                <input matInput [value]="userEmail()" readonly />
+              </mat-form-field>
+              <mat-chip class="role-badge">{{ roleLabel() | titlecase }}</mat-chip>
+            </div>
+          </div>
+        </mat-card>
+
+        <mat-card class="settings-card">
+          <h3 class="card-heading">Change password</h3>
+          <form [formGroup]="passwordForm" class="stack-form" (ngSubmit)="savePassword()">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Current password</mat-label>
+              <input matInput type="password" formControlName="current" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>New password</mat-label>
+              <input matInput type="password" formControlName="next" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Confirm password</mat-label>
+              <input matInput type="password" formControlName="confirm" />
+            </mat-form-field>
+            <button mat-flat-button color="primary" type="submit">Update password</button>
+          </form>
+        </mat-card>
+
+        <mat-card class="settings-card danger-card">
+          <h3 class="card-heading">Danger zone</h3>
+          <p class="muted">Permanently delete your account and all associated data.</p>
+          <button mat-stroked-button color="warn" type="button" (click)="deleteAccount()">Delete account</button>
+        </mat-card>
+      </section>
+
+      <!-- Appearance -->
+      <section *ngIf="activeSection() === 'appearance'" class="settings-section">
+        <h2 class="panel-title">Appearance</h2>
+        <div class="theme-cards">
+          <button
+            type="button"
+            class="theme-card"
+            [class.theme-card--selected]="!isDarkMode()"
+            (click)="setTheme(false)"
+          >
+            <i class="ti ti-sun"></i>
+            <span>Light</span>
+          </button>
+          <button
+            type="button"
+            class="theme-card"
+            [class.theme-card--selected]="isDarkMode()"
+            (click)="setTheme(true)"
+          >
+            <i class="ti ti-moon"></i>
+            <span>Dark</span>
+          </button>
+        </div>
+
+        <h3 class="card-heading">Accent color</h3>
+        <div class="accent-swatches">
+          <button
+            type="button"
+            *ngFor="let a of accentOptions"
+            [class]="'accent-swatch accent-swatch--' + a.id"
+            [class.accent-swatch--selected]="accentId() === a.id"
+            (click)="pickAccent(a.id)"
+            [attr.aria-label]="a.label"
+          >
+            <i *ngIf="accentId() === a.id" class="ti ti-check swatch-check"></i>
+          </button>
+        </div>
+
+        <h3 class="card-heading">Density</h3>
+        <mat-button-toggle-group
+          [value]="density()"
+          (change)="setDensityValue($event.value)"
+          class="density-toggle"
+        >
+          <mat-button-toggle value="compact">Compact</mat-button-toggle>
+          <mat-button-toggle value="normal">Normal</mat-button-toggle>
+          <mat-button-toggle value="comfortable">Comfortable</mat-button-toggle>
+        </mat-button-toggle-group>
+
+        <h3 class="card-heading">Language</h3>
+        <mat-form-field appearance="outline" class="lang-field">
+          <mat-label>Language</mat-label>
+          <mat-select [value]="language()" (selectionChange)="language.set($event.value)">
+            <mat-option value="en">English</mat-option>
+            <mat-option value="bn">Bengali</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      <!-- Notifications -->
+      <section *ngIf="activeSection() === 'notifications'" class="settings-section">
+        <h2 class="panel-title">Notifications</h2>
+        <mat-card class="settings-card">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Task assigned to me</div>
+              <div class="toggle-desc">When a task is assigned to your account</div>
+            </div>
+            <mat-slide-toggle [checked]="notifyTaskAssigned()" (change)="notifyTaskAssigned.set($event.checked)"></mat-slide-toggle>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Task overdue</div>
+              <div class="toggle-desc">When a due date passes without completion</div>
+            </div>
+            <mat-slide-toggle [checked]="notifyOverdue()" (change)="notifyOverdue.set($event.checked)"></mat-slide-toggle>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Priority escalation (aging)</div>
+              <div class="toggle-desc">When priority auto-escalates from aging rules</div>
+            </div>
+            <mat-slide-toggle [checked]="notifyEscalation()" (change)="notifyEscalation.set($event.checked)"></mat-slide-toggle>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Security alerts</div>
+              <div class="toggle-desc">High-risk sessions and anomalies</div>
+            </div>
+            <mat-slide-toggle [checked]="notifySecurity()" (change)="notifySecurity.set($event.checked)"></mat-slide-toggle>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Audit log anomalies</div>
+              <div class="toggle-desc">Unusual patterns in audit activity</div>
+            </div>
+            <mat-slide-toggle [checked]="notifyAudit()" (change)="notifyAudit.set($event.checked)"></mat-slide-toggle>
+          </div>
+          <button mat-flat-button color="primary" type="button" (click)="saveNotifications()">Save preferences</button>
+        </mat-card>
+      </section>
+
+      <!-- Project defaults -->
+      <section *ngIf="activeSection() === 'project'" class="settings-section">
+        <h2 class="panel-title">Project defaults</h2>
+        <mat-card class="settings-card stack-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Default status on create</mat-label>
+            <mat-select [value]="defaultStatus()" (selectionChange)="defaultStatus.set($event.value)">
+              <mat-option value="pending">Pending</mat-option>
+              <mat-option value="in-progress">In Progress</mat-option>
+              <mat-option value="completed">Completed</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Default priority</mat-label>
+            <mat-select [value]="defaultPriority()" (selectionChange)="defaultPriority.set($event.value)">
+              <mat-option value="high">High</mat-option>
+              <mat-option value="medium">Medium</mat-option>
+              <mat-option value="low">Low</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="half-field">
+            <mat-label>LOW → MEDIUM after (days)</mat-label>
+            <input matInput type="number" [ngModel]="lowToMediumDays()" (ngModelChange)="lowToMediumDays.set(+$event)" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="half-field">
+            <mat-label>MEDIUM → HIGH after (days)</mat-label>
+            <input matInput type="number" [ngModel]="mediumToHighDays()" (ngModelChange)="mediumToHighDays.set(+$event)" />
+          </mat-form-field>
+          <button mat-flat-button color="primary" type="button" (click)="saveProjectDefaults()">Save defaults</button>
+        </mat-card>
+      </section>
+
+      <!-- About -->
+      <section *ngIf="activeSection() === 'about'" class="settings-section">
+        <h2 class="panel-title">About</h2>
+        <mat-card class="settings-card">
+          <h3 class="about-name">Nexus PM</h3>
+          <p class="muted">Version 1.0.0</p>
+          <div class="tech-chips">
+            <mat-chip>Angular</mat-chip>
+            <mat-chip>NestJS</mat-chip>
+            <mat-chip>PostgreSQL</mat-chip>
+            <mat-chip>TypeORM</mat-chip>
+          </div>
+          <a class="github-link" href="https://github.com" target="_blank" rel="noopener">
+            <i class="ti ti-brand-github"></i> View source
+          </a>
+        </mat-card>
+        <mat-card class="settings-card info-card">
+          <i class="ti ti-info-circle info-icon"></i>
+          <div>
+            <h3 class="card-heading">Defense &amp; Aerospace alignment</h3>
+            <p class="info-text">
+              Earned Value Management (EVM) metrics support DFARS-style program oversight. Critical Path Method (CPM)
+              scheduling aligns with NASA program management practices for dependency-driven planning.
+            </p>
+          </div>
+        </mat-card>
+      </section>
+    </div>
+  </div>
+</div>

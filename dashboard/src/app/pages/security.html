@@ -1,0 +1,38 @@
+<div class="page">
+  <p class="section-eyebrow">Security</p>
+  <div class="security-actions" *ngIf="isOwner()">
+    <button mat-stroked-button type="button" (click)="simulateAlert()">Simulate alert</button>
+  </div>
+
+  <div *ngIf="loading()" class="loading-wrap">
+    <mat-spinner diameter="36"></mat-spinner>
+  </div>
+
+  <div *ngIf="!loading() && alerts().length === 0" class="security-empty">
+    <i class="ti ti-shield-check"></i>
+    <h2>All clear</h2>
+    <p>No suspicious activity detected in your organization.</p>
+  </div>
+
+  <section *ngIf="!loading() && alerts().length > 0" class="alerts-grid">
+    <mat-card *ngFor="let alert of alerts()" class="alert-card" [class.alert-card--reviewed]="alert.reviewed">
+      <div class="alert-top">
+        <span [class]="riskClass(alert.riskScore)">Risk {{ alert.riskScore }}</span>
+        <span class="pill pill-green" *ngIf="alert.reviewed">Reviewed</span>
+      </div>
+      <div class="alert-user">
+        <span class="alert-avatar">{{ (alert.userEmail || alert.userId).slice(0,2).toUpperCase() }}</span>
+        <div>
+          <strong>{{ alert.userEmail || alert.userId }}</strong>
+          <div class="muted">{{ alert.createdAt | date: 'short' }}</div>
+        </div>
+      </div>
+      <div class="alert-reasons">
+        <span class="pill pill-amber" *ngFor="let reason of (alert.triggeredFactors || alert.reasons || [])">{{ reasonLabel(reason) }}</span>
+      </div>
+      <button mat-stroked-button color="primary" *ngIf="!alert.reviewed" (click)="markReviewed(alert.id)">
+        Mark reviewed
+      </button>
+    </mat-card>
+  </section>
+</div>
