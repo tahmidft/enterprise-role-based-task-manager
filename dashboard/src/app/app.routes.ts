@@ -21,8 +21,28 @@ export const appRoutes: Routes = [
         loadComponent: () => import('./pages/dashboard').then(m => m.DashboardComponent),
       },
       {
+        path: 'board',
+        loadComponent: () => import('./pages/board').then(m => m.BoardComponent),
+      },
+      {
         path: 'analytics',
         loadComponent: () => import('./pages/analytics').then(m => m.AnalyticsComponent),
+      },
+      {
+        path: 'audit',
+        loadComponent: () => import('./pages/audit').then(m => m.AuditComponent),
+      },
+      {
+        path: 'security',
+        loadComponent: () => import('./pages/security').then(m => m.SecurityComponent),
+      },
+      {
+        path: 'team',
+        loadComponent: () => import('./pages/team').then(m => m.TeamComponent),
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./pages/settings').then(m => m.SettingsComponent),
       },
     ],
   },

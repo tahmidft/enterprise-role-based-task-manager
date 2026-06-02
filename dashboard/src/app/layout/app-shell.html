@@ -1,42 +1,230 @@
-<mat-sidenav-container class="shell">
-  <mat-sidenav mode="side" opened class="sidenav">
-    <div class="brand">Enterprise PM</div>
-    <mat-nav-list>
-      <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
-        <mat-icon matListItemIcon>dashboard</mat-icon>
-        <span matListItemTitle>Dashboard</span>
-      </a>
-      <a mat-list-item routerLink="/analytics" routerLinkActive="active">
-        <mat-icon matListItemIcon>analytics</mat-icon>
-        <span matListItemTitle>Analytics</span>
-      </a>
-      <a
-        *ngIf="isOwner()"
-        mat-list-item
-        routerLink="/dashboard"
-        fragment="security"
-        routerLinkActive="active"
+<div class="shell" [class.shell--collapsed]="sidebar.collapsed()">
+  <aside class="app-sidebar" [class.app-sidebar--collapsed]="sidebar.collapsed()">
+    <div class="sidebar-toggle-wrap">
+      <button
+        type="button"
+        class="sidebar-toggle"
+        (click)="toggleSidebar()"
+        [attr.aria-label]="sidebar.collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
       >
-        <mat-icon
-          matListItemIcon
-          [matBadge]="securityBadge() > 0 ? securityBadge() : null"
-          matBadgeColor="warn"
-        >
-          security
-        </mat-icon>
-        <span matListItemTitle>Security Alerts</span>
-      </a>
-    </mat-nav-list>
-  </mat-sidenav>
+        <i class="ti" [class.ti-chevron-left]="!sidebar.collapsed()" [class.ti-chevron-right]="sidebar.collapsed()"></i>
+      </button>
+    </div>
 
-  <mat-sidenav-content>
-    <mat-toolbar color="primary">
-      <span>{{ userEmail() }}</span>
-      <span class="spacer"></span>
-      <button mat-stroked-button (click)="logout()">Logout</button>
-    </mat-toolbar>
-    <main class="content">
+    <div class="drawer-inner">
+      <div class="drawer-brand">
+        <div class="logo-blob" aria-hidden="true">
+          <i class="ti ti-rocket"></i>
+        </div>
+        <div class="brand-text" *ngIf="!sidebar.collapsed()">
+          <span class="brand-title">Nexus PM</span>
+          <span class="brand-sub">Mission-critical project intelligence</span>
+        </div>
+      </div>
+
+      <nav class="drawer-nav" aria-label="Main navigation">
+        <a
+          class="nav-item"
+          routerLink="/dashboard"
+          routerLinkActive="nav-active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          [matTooltip]="sidebar.collapsed() ? 'Dashboard' : ''"
+          matTooltipPosition="right"
+        >
+          <i class="ti ti-layout-dashboard nav-ti"></i>
+          <span class="nav-label" *ngIf="!sidebar.collapsed()">Dashboard</span>
+        </a>
+        <a
+          class="nav-item"
+          routerLink="/board"
+          routerLinkActive="nav-active"
+          [matTooltip]="sidebar.collapsed() ? 'Project board' : ''"
+          matTooltipPosition="right"
+        >
+          <i class="ti ti-layout-kanban nav-ti"></i>
+          <span class="nav-label" *ngIf="!sidebar.collapsed()">Project board</span>
+          <span *ngIf="!sidebar.collapsed() && boardBadge() > 0" class="nav-badge">{{ boardBadge() }}</span>
+          <span *ngIf="sidebar.collapsed() && boardBadge() > 0" class="nav-dot" aria-hidden="true"></span>
+        </a>
+        <a
+          class="nav-item"
+          routerLink="/analytics"
+          routerLinkActive="nav-active"
+          [matTooltip]="sidebar.collapsed() ? 'Analytics' : ''"
+          matTooltipPosition="right"
+        >
+          <i class="ti ti-chart-bar nav-ti"></i>
+          <span class="nav-label" *ngIf="!sidebar.collapsed()">Analytics</span>
+        </a>
+
+        <div class="nav-section-label" *ngIf="!sidebar.collapsed()">Management</div>
+
+        <a
+          *ngIf="canViewTeam()"
+          class="nav-item"
+          routerLink="/team"
+          routerLinkActive="nav-active"
+          [matTooltip]="sidebar.collapsed() ? 'Team' : ''"
+          matTooltipPosition="right"
+        >
+          <i class="ti ti-users nav-ti"></i>
+          <span class="nav-label" *ngIf="!sidebar.collapsed()">Team</span>
+        </a>
+        <a
+          class="nav-item"
+          routerLink="/audit"
+          routerLinkActive="nav-active"
+          [matTooltip]="sidebar.collapsed() ? 'Audit log' : ''"
+          matTooltipPosition="right"
+        >
+          <i class="ti ti-history nav-ti"></i>
+          <span class="nav-label" *ngIf="!sidebar.collapsed()">Audit log</span>
+        </a>
+        <a
+          *ngIf="isOwner()"
+          class="nav-item"
+          routerLink="/security"
+          routerLinkActive="nav-active"
+          [matTooltip]="sidebar.collapsed() ? 'Security' : ''"
+          matTooltipPosition="right"
+        >
+          <i class="ti ti-shield-check nav-ti"></i>
+          <span class="nav-label" *ngIf="!sidebar.collapsed()">Security</span>
+          <span *ngIf="!sidebar.collapsed() && securityBadge() > 0" class="nav-badge nav-badge--error">{{ securityBadge() }}</span>
+          <span *ngIf="sidebar.collapsed() && securityBadge() > 0" class="nav-dot nav-dot--error" aria-hidden="true"></span>
+        </a>
+        <a
+          class="nav-item"
+          routerLink="/settings"
+          routerLinkActive="nav-active"
+          [matTooltip]="sidebar.collapsed() ? 'Settings' : ''"
+          matTooltipPosition="right"
+        >
+          <i class="ti ti-settings nav-ti"></i>
+          <span class="nav-label" *ngIf="!sidebar.collapsed()">Settings</span>
+        </a>
+      </nav>
+
+      <div class="drawer-spacer"></div>
+
+      <div class="drawer-footer">
+        <div class="dark-mode-row" [class.dark-mode-row--collapsed]="sidebar.collapsed()">
+          <i class="ti ti-moon dark-ti"></i>
+          <span class="dark-label" *ngIf="!sidebar.collapsed()">Dark mode</span>
+          <mat-slide-toggle
+            *ngIf="!sidebar.collapsed()"
+            [(ngModel)]="isDarkMode"
+            color="primary"
+            class="theme-slide dark-toggle"
+          ></mat-slide-toggle>
+        </div>
+
+        <div class="user-surface" [class.user-surface--collapsed]="sidebar.collapsed()">
+          <div class="user-avatar" aria-hidden="true">{{ userInitials() }}</div>
+          <div class="user-info" *ngIf="!sidebar.collapsed()">
+            <div class="user-name">{{ userName() }}</div>
+            <div class="user-email">{{ userEmail() }}</div>
+          </div>
+          <button
+            *ngIf="!sidebar.collapsed()"
+            type="button"
+            class="logout-icon-btn"
+            (click)="logout()"
+            aria-label="Logout"
+          >
+            <i class="ti ti-logout"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content-wrapper">
+    <header class="top-bar">
+      <h1 class="topbar-title">{{ pageTitle() }}</h1>
+      <div class="topbar-actions">
+        <div class="search-pill">
+          <i class="ti ti-search"></i>
+          <input #topSearch type="search" placeholder="Search tasks…" [(ngModel)]="searchQuery" aria-label="Search" />
+        </div>
+        <button type="button" class="icon-btn" aria-label="Notifications" (click)="openNotifications()">
+          <i class="ti ti-bell"></i>
+          <span *ngIf="notifCount() > 0" class="notif-dot" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="icon-btn" [matMenuTriggerFor]="moreMenu" aria-label="More options">
+          <i class="ti ti-dots-vertical"></i>
+        </button>
+      </div>
+
+      <mat-menu #moreMenu="matMenu">
+        <ng-container *ngFor="let item of menuItems()">
+          <mat-divider *ngIf="item.label === '---'"></mat-divider>
+          <button *ngIf="item.label !== '---'" mat-menu-item (click)="runMenuAction(item.action)">
+            <i class="ti topbar-menu-icon" [ngClass]="item.icon"></i> {{ item.label }}
+          </button>
+        </ng-container>
+      </mat-menu>
+    </header>
+
+    <main class="page-content">
       <router-outlet />
     </main>
-  </mat-sidenav-content>
-</mat-sidenav-container>
+  </div>
+</div>
+
+<div
+  *ngIf="notificationsOpen()"
+  class="notif-backdrop"
+  (click)="closeNotifications()"
+  aria-hidden="true"
+></div>
+<aside *ngIf="notificationsOpen()" class="notif-panel" role="dialog" aria-label="Notifications">
+  <header class="notif-header">
+    <h2 class="notif-title">Notifications</h2>
+    <div class="notif-header-actions">
+      <button type="button" class="notif-mark-read" (click)="markAllRead()" title="Mark all as read">
+        <i class="ti ti-checks"></i>
+      </button>
+      <button type="button" class="notif-mark-read" (click)="clearNotifications()" title="Clear notifications">
+        <i class="ti ti-trash"></i>
+      </button>
+      <button type="button" class="notif-close" (click)="closeNotifications()" aria-label="Close">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="notif-list">
+    <ng-container *ngFor="let g of notifGroups()">
+      <div class="notif-group-label">{{ g.label }}</div>
+      <div
+        *ngFor="let n of g.items"
+        class="notif-item"
+        [class.notif-item--unread]="n.unread"
+      >
+        <span [class]="n.iconClass">
+          <i class="ti" [class]="n.iconName"></i>
+        </span>
+        <div class="notif-item-body">
+          <div class="notif-message">{{ n.message }}</div>
+          <div class="notif-time">{{ n.date | date: 'shortTime' }}</div>
+          <div class="notif-actions" *ngIf="n.action">
+            <button
+              type="button"
+              class="notif-action-btn"
+              (click)="notifAction(n)"
+            >
+              <ng-container *ngIf="n.action === 'board'">View task</ng-container>
+              <ng-container *ngIf="n.action === 'security'">Review</ng-container>
+            </button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <div *ngIf="notifGroups().length === 0" class="notif-empty">
+      <i class="ti ti-bell-off notif-empty-icon"></i>
+      <p>No new notifications</p>
+    </div>
+  </div>
+</aside>
