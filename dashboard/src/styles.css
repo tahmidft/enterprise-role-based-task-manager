@@ -1,15 +1,350 @@
-@import '@angular/material/prebuilt-themes/indigo-pink.css';
+/* Global Material You styles — tokens exposed as CSS variables */
+@import url('./tokens-vars.css');
 
-:root {
-  --mdc-theme-primary: #1976d2;
-  --mdc-theme-secondary: #ffa000;
-  --mdc-theme-error: #d32f2f;
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   margin: 0;
-  font-family: Roboto, 'Helvetica Neue', sans-serif;
-  background: #f4f6f8;
-  color: #1f2937;
+  height: 100%;
+  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+  background: var(--md-background);
+  color: var(--md-on-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── M3 shape overrides ───────────────────────────── */
+.mat-mdc-card {
+  --mdc-elevated-card-container-shape: 24px;
+  border-radius: 24px !important;
+  background: var(--md-surface) !important;
+  box-shadow: none !important;
+}
+
+.mat-mdc-unelevated-button,
+.mat-mdc-raised-button,
+.mat-mdc-outlined-button {
+  border-radius: 999px !important;
+}
+
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-container-shape: 4px;
+}
+
+/* ── Status / priority pills (M3 tonal) ─────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.pill-green {
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
+}
+
+.pill-amber {
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
+}
+
+.pill-red {
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
+}
+
+/* Legacy mat-chip mappings (tables) */
+mat-chip.chip-status-pending,
+mat-chip.chip-priority-medium {
+  --mdc-chip-elevated-container-color: var(--pill-amber-bg);
+  --mdc-chip-label-text-color: var(--pill-amber-fg);
+}
+
+mat-chip.chip-status-in-progress {
+  --mdc-chip-elevated-container-color: var(--md-primary-container);
+  --mdc-chip-label-text-color: var(--md-on-primary-container);
+}
+
+mat-chip.chip-status-completed,
+mat-chip.chip-priority-low {
+  --mdc-chip-elevated-container-color: var(--pill-green-bg);
+  --mdc-chip-label-text-color: var(--pill-green-fg);
+}
+
+mat-chip.chip-priority-high {
+  --mdc-chip-elevated-container-color: var(--pill-red-bg);
+  --mdc-chip-label-text-color: var(--pill-red-fg);
+}
+
+mat-chip.chip-evm-green {
+  --mdc-chip-elevated-container-color: var(--pill-green-bg);
+  --mdc-chip-label-text-color: var(--pill-green-fg);
+}
+
+mat-chip.chip-evm-yellow {
+  --mdc-chip-elevated-container-color: var(--pill-amber-bg);
+  --mdc-chip-label-text-color: var(--pill-amber-fg);
+}
+
+mat-chip.chip-evm-red {
+  --mdc-chip-elevated-container-color: var(--pill-red-bg);
+  --mdc-chip-label-text-color: var(--pill-red-fg);
+}
+
+/* ── Page layout helpers ──────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--md-on-surface-hint);
+}
+
+.loading-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.muted {
+  color: var(--md-on-surface-hint);
+  font-size: 12px;
+}
+
+/* ── Dark mode slide toggle (sidebar) ─────────────── */
+.theme-slide.mat-mdc-slide-toggle {
+  --mdc-switch-unselected-track-color: var(--md-outline);
+  --mdc-switch-unselected-handle-color: var(--md-on-surface-secondary);
+  --mdc-switch-selected-track-color: var(--primary);
+  --mdc-switch-selected-handle-color: var(--md-surface);
+}
+
+/* ── Tables ───────────────────────────────────────── */
+.mat-mdc-table {
+  background: transparent !important;
+}
+
+.mat-mdc-header-row {
+  background: var(--md-surface-variant) !important;
+}
+
+.mat-mdc-row:hover {
+  background: var(--md-surface-variant) !important;
+}
+
+/* ── Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--md-outline);
+  border-radius: 3px;
+}
+
+/* Priority tonal surfaces (Kanban + table) */
+.tone-high {
+  background: var(--priority-high-bg) !important;
+  border-left: 3px solid var(--priority-high-border);
+}
+
+.tone-medium {
+  background: var(--priority-medium-bg) !important;
+  border-left: 3px solid var(--priority-medium-border);
+}
+
+.tone-low {
+  background: var(--priority-low-bg) !important;
+  border-left: 3px solid var(--priority-low-border);
+}
+
+.tone-completed {
+  background: var(--task-completed-bg) !important;
+  opacity: 0.7;
+}
+
+.tone-completed .card-title,
+.tone-completed .task-title-cell {
+  text-decoration: line-through;
+  color: var(--md-on-surface-hint);
+}
+
+.variance-positive {
+  color: var(--variance-positive);
+  font-weight: 500;
+}
+
+.variance-negative {
+  color: var(--variance-negative);
+  font-weight: 500;
+}
+
+.float-critical {
+  color: var(--float-critical);
+  font-weight: 600;
+}
+
+.float-normal {
+  color: var(--float-normal);
+  font-weight: 500;
+}
+
+/* Sidebar collapse (shell) */
+html.sidebar-collapsed {
+  --sidebar-width: var(--sidebar-width-collapsed);
+}
+
+body.density-compact .page-content {
+  padding: 4px 16px 16px;
+}
+
+body.density-comfortable .page-content {
+  padding: 16px 32px 32px;
+}
+
+.m3-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: 28px !important;
+}
+
+/* Notification icons (same shape as audit icons) */
+.notif-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.notif-icon--create   { background: var(--pill-green-bg); color: var(--pill-green-fg); }
+.notif-icon--update   { background: var(--pill-amber-bg); color: var(--pill-amber-fg); }
+.notif-icon--delete   { background: var(--pill-red-bg);   color: var(--pill-red-fg); }
+.notif-icon--login    { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.notif-icon--escalate { background: #FFF3E0; color: #E65100; }
+.notif-icon--security { background: var(--pill-red-bg);   color: var(--pill-red-fg); }
+.notif-icon--default  { background: var(--md-surface-variant, #f3edf7); color: var(--md-on-surface-secondary); }
+
+/* Audit log entry icons */
+.audit-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.audit-icon--create {
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
+}
+
+.audit-icon--update {
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
+}
+
+.audit-icon--delete {
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
+}
+
+.audit-icon--login,
+.audit-icon--auth {
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+}
+
+.audit-icon--default {
+  background: var(--md-surface-variant);
+  color: var(--md-on-surface-secondary);
+}
+
+/* Quick login role dots */
+.role-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.role-dot--owner {
+  background: var(--primary);
+}
+
+.role-dot--admin {
+  background: var(--role-admin);
+}
+
+.role-dot--manager {
+  background: var(--role-manager);
+}
+
+.role-dot--member {
+  background: var(--role-member);
+}
+
+.role-dot--viewer {
+  background: var(--md-on-surface-hint);
+}
+
+body.dark-theme {
+  .mat-mdc-card { background-color: var(--md-surface) !important; color: var(--md-on-surface) !important; }
+  .mat-mdc-dialog-container .mdc-dialog__surface { background-color: var(--md-surface) !important; color: var(--md-on-surface) !important; }
+  .mat-mdc-select-panel { background-color: var(--md-surface-variant) !important; }
+  .mat-mdc-option { color: var(--md-on-surface) !important; }
+  .mat-mdc-option:hover { background-color: rgba(255,255,255,0.08) !important; }
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__leading,
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__notch,
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__trailing {
+    border-color: var(--md-outline) !important;
+  }
+  .mat-mdc-form-field input,
+  .mat-mdc-form-field textarea { color: var(--md-on-surface) !important; }
+  .mat-mdc-table { background: transparent !important; }
+  .mat-mdc-row { background: transparent !important; }
+  .mat-mdc-row.tone-high {
+    background: var(--priority-high-bg) !important;
+    border-left: 3px solid var(--priority-high-border) !important;
+  }
+  .mat-mdc-row.tone-medium {
+    background: var(--priority-medium-bg) !important;
+    border-left: 3px solid var(--priority-medium-border) !important;
+  }
+  .mat-mdc-row.tone-low {
+    background: var(--priority-low-bg) !important;
+    border-left: 3px solid var(--priority-low-border) !important;
+  }
+  .mat-mdc-row.tone-completed {
+    background: var(--task-completed-bg) !important;
+    border-left: 3px solid var(--md-outline) !important;
+  }
+  .mat-mdc-header-row { background: var(--md-surface-variant) !important; }
+  .pill-red { background: var(--priority-chip-high-bg); color: var(--priority-chip-high-fg); }
+  .pill-amber { background: var(--priority-chip-medium-bg); color: var(--priority-chip-medium-fg); }
+  .pill-green { background: var(--priority-chip-low-bg); color: var(--priority-chip-low-fg); }
+  .tone-completed .card-title,
+  .tone-completed .task-title-cell,
+  .tone-completed .wbs-title {
+    color: #79747e !important;
+  }
 }

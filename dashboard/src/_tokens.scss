@@ -1,0 +1,98 @@
+// Material You (M3) design tokens — single source of truth
+// Import in theme.scss and component styles via @use '../tokens' as t;
+
+// ── Light ───────────────────────────────────────────
+$background: #f6f2ff;
+$surface: #fffbfe;
+$surface-variant: #f3edf7;
+$on-surface: #1c1b1f;
+$on-surface-secondary: #49454f;
+$on-surface-hint: #79747e;
+
+$primary: #6750a4;
+$primary-container: #eaddff;
+$on-primary-container: #21005d;
+$primary-tonal: #f3edf7;
+
+$error: #b3261e;
+$error-container: #ffdad6;
+$on-error-container: #410002;
+
+$tertiary-container: #ffd8e4;
+$on-tertiary-container: #31111d;
+
+$outline: #e6e0ec;
+
+$pill-green-bg: #d7f3dc;
+$pill-green-fg: #0d5523;
+$pill-amber-bg: #fff0c2;
+$pill-amber-fg: #5c4500;
+$pill-red-bg: #ffdad6;
+$pill-red-fg: #8c1d18;
+
+$kanban-pending: #f3edf7;
+$kanban-progress: #e8f5ff;
+$kanban-done: #eafbe7;
+
+$badge-pending-bg: #eaddff;
+$badge-pending-fg: #21005d;
+$badge-progress-bg: #c2e8ff;
+$badge-progress-fg: #00344a;
+$badge-done-bg: #c9f0c8;
+$badge-done-fg: #0d5523;
+
+$search-bg: #e6e0ec;
+$logo-gradient-start: #6750a4;
+$logo-gradient-end: #7965af;
+
+$priority-high-bg: #fff1f0;
+$priority-high-border: #b3261e;
+$priority-medium-bg: #fffbf0;
+$priority-medium-border: #e8a000;
+$priority-low-bg: #f0fbf4;
+$priority-low-border: #2d7a4f;
+$task-completed-bg: #f8f8f8;
+
+$accent-blue: #1976d2;
+$accent-teal: #00695c;
+$accent-coral: #bf360c;
+$accent-green: #2e7d32;
+
+$role-owner: #6750a4;
+$role-admin: #1976d2;
+$role-manager: #2e7d32;
+$role-member: #e8a000;
+$role-viewer: #79747e;
+
+$info-card-bg: #e8f5ff;
+$variance-positive: #0d5523;
+$variance-negative: #8c1d18;
+$float-critical: #b3261e;
+$float-normal: #6750a4;
+
+// ── Dark ────────────────────────────────────────────
+$dark-background: #141218;
+$dark-surface: #1c1b1f;
+$dark-surface-variant: #2b2930;
+$dark-on-surface: #e6e1e5;
+$dark-on-surface-secondary: #cac4d0;
+$dark-on-surface-hint: #938f99;
+$dark-primary-container: #4f378b;
+$dark-on-primary-container: #eaddff;
+$dark-error-container: #8c1d18;
+$dark-on-error-container: #f9dedc;
+$dark-outline: #49454f;
+$dark-kanban-pending: #2b2930;
+$dark-kanban-progress: #1a2b38;
+$dark-kanban-done: #1a2e1a;
+
+// Shape
+$shape-card: 24px;
+$shape-evm: 20px;
+$shape-kanban-col: 24px;
+$shape-kanban-card: 18px;
+$shape-nav-pill: 9999px;
+$shape-logo: 14px;
+$shape-wbs-row: 16px;
+$shape-user-surface: 24px;
+$shape-sidebar-tr: 28px;

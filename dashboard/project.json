@@ -20,7 +20,7 @@
             "input": "dashboard/public"
           }
         ],
-        "styles": ["dashboard/src/styles.css"]
+        "styles": ["dashboard/src/theme.scss", "dashboard/src/styles.css"]
       },
       "configurations": {
         "production": {
@@ -32,8 +32,8 @@
             },
             {
               "type": "anyComponentStyle",
-              "maximumWarning": "4kb",
-              "maximumError": "8kb"
+              "maximumWarning": "8kb",
+              "maximumError": "16kb"
             }
           ],
           "outputHashing": "all"
