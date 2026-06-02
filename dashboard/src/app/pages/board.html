@@ -1,0 +1,140 @@
+<div class="page board-page">
+  <p class="section-eyebrow">Kanban</p>
+
+  <div *ngIf="loading()" class="loading-wrap">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <section *ngIf="!loading()" class="kanban" cdkDropListGroup>
+
+    <div class="column column-pending">
+      <div class="column-header">
+        <span class="column-title">Pending</span>
+        <span class="column-count column-count--pending">{{ pending().length }}</span>
+      </div>
+      <div cdkDropList [cdkDropListData]="pending()" class="list" (cdkDropListDropped)="drop($event, 'pending')">
+        <article *ngFor="let t of pending()" cdkDrag class="kanban-card" [ngClass]="cardTone(t)">
+          <div class="card-header-row">
+            <h3 class="card-title">{{ t.title }}</h3>
+            <button
+              type="button"
+              class="card-menu-btn"
+              [matMenuTriggerFor]="cardMenu"
+              [matMenuTriggerData]="{ task: t }"
+              (click)="$event.stopPropagation()"
+              aria-label="Task options"
+            >
+              <i class="ti ti-dots-vertical"></i>
+            </button>
+          </div>
+          <footer class="card-footer">
+            <span [class]="priorityPill(t.priority)">{{ t.priority | titlecase }}</span>
+            <span class="card-due" *ngIf="t.dueDate">
+              <i class="ti ti-calendar"></i>{{ t.dueDate | date: 'MMM d' }}
+            </span>
+            <span class="card-avatar" [attr.title]="formatAssignee(t)">{{ getInitials(t) }}</span>
+          </footer>
+        </article>
+      </div>
+    </div>
+
+    <div class="column column-progress">
+      <div class="column-header">
+        <span class="column-title">In Progress</span>
+        <span class="column-count column-count--progress">{{ inProgress().length }}</span>
+      </div>
+      <div cdkDropList [cdkDropListData]="inProgress()" class="list" (cdkDropListDropped)="drop($event, 'in-progress')">
+        <article *ngFor="let t of inProgress()" cdkDrag class="kanban-card" [ngClass]="cardTone(t)">
+          <div class="card-header-row">
+            <h3 class="card-title">{{ t.title }}</h3>
+            <button
+              type="button"
+              class="card-menu-btn"
+              [matMenuTriggerFor]="cardMenu"
+              [matMenuTriggerData]="{ task: t }"
+              (click)="$event.stopPropagation()"
+              aria-label="Task options"
+            >
+              <i class="ti ti-dots-vertical"></i>
+            </button>
+          </div>
+          <footer class="card-footer">
+            <span [class]="priorityPill(t.priority)">{{ t.priority | titlecase }}</span>
+            <span class="card-due" *ngIf="t.dueDate">
+              <i class="ti ti-calendar"></i>{{ t.dueDate | date: 'MMM d' }}
+            </span>
+            <span class="card-avatar" [attr.title]="formatAssignee(t)">{{ getInitials(t) }}</span>
+          </footer>
+        </article>
+      </div>
+    </div>
+
+    <div class="column column-done">
+      <div class="column-header">
+        <span class="column-title">Completed</span>
+        <span class="column-count column-count--done">{{ done().length }}</span>
+      </div>
+      <div cdkDropList [cdkDropListData]="done()" class="list" (cdkDropListDropped)="drop($event, 'completed')">
+        <article *ngFor="let t of done()" cdkDrag class="kanban-card" [ngClass]="cardTone(t)">
+          <div class="card-header-row">
+            <h3 class="card-title">{{ t.title }}</h3>
+            <button
+              type="button"
+              class="card-menu-btn"
+              [matMenuTriggerFor]="cardMenu"
+              [matMenuTriggerData]="{ task: t }"
+              (click)="$event.stopPropagation()"
+              aria-label="Task options"
+            >
+              <i class="ti ti-dots-vertical"></i>
+            </button>
+          </div>
+          <footer class="card-footer">
+            <span [class]="priorityPill(t.priority)">{{ t.priority | titlecase }}</span>
+            <span class="card-due" *ngIf="t.dueDate">
+              <i class="ti ti-calendar"></i>{{ t.dueDate | date: 'MMM d' }}
+            </span>
+            <span class="card-avatar" [attr.title]="formatAssignee(t)">{{ getInitials(t) }}</span>
+          </footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shared card context menu -->
+  <mat-menu #cardMenu="matMenu">
+    <ng-template matMenuContent let-task="task">
+      <button mat-menu-item (click)="editTask(task)">
+        <i class="ti ti-edit menu-icon"></i> Edit task
+      </button>
+      <button mat-menu-item [matMenuTriggerFor]="priorityMenu" [matMenuTriggerData]="{ task: task }">
+        <i class="ti ti-flag menu-icon"></i> Change priority
+      </button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item class="delete-item" (click)="deleteTask(task)">
+        <i class="ti ti-trash menu-icon"></i> Delete task
+      </button>
+    </ng-template>
+  </mat-menu>
+
+  <mat-menu #priorityMenu="matMenu">
+    <ng-template matMenuContent let-task="task">
+      <button mat-menu-item (click)="changePriority(task, 'high')">
+        <span class="priority-dot priority-dot--high"></span> High
+      </button>
+      <button mat-menu-item (click)="changePriority(task, 'medium')">
+        <span class="priority-dot priority-dot--medium"></span> Medium
+      </button>
+      <button mat-menu-item (click)="changePriority(task, 'low')">
+        <span class="priority-dot priority-dot--low"></span> Low
+      </button>
+    </ng-template>
+  </mat-menu>
+
+  <div class="fab-row" *ngIf="!loading()">
+    <button type="button" class="extended-fab" (click)="openNewTaskDialog()">
+      <i class="ti ti-plus"></i>
+      <span>New task</span>
+    </button>
+  </div>
+</div>

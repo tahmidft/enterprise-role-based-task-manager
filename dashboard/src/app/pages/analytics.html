@@ -8,14 +8,36 @@
   </mat-card>
 
   <ng-container *ngIf="data() as d">
+    <p class="section-eyebrow">Overview</p>
     <section class="metric-cards">
-      <mat-card><mat-card-title>Total Tasks</mat-card-title><mat-card-content>{{ d.totalTasks }}</mat-card-content></mat-card>
-      <mat-card><mat-card-title>Open Tasks</mat-card-title><mat-card-content>{{ d.openTasks }}</mat-card-content></mat-card>
-      <mat-card><mat-card-title>Overdue</mat-card-title><mat-card-content>{{ d.overdueTasks }}</mat-card-content></mat-card>
-      <mat-card><mat-card-title>Completion</mat-card-title><mat-card-content>{{ completionPct() }}%</mat-card-content></mat-card>
-      <mat-card><mat-card-title>Active Users (30d)</mat-card-title><mat-card-content>{{ d.activeUsers }}</mat-card-content></mat-card>
+      <article class="metric-card">
+        <i class="ti ti-list-check metric-icon"></i>
+        <span class="metric-label">Total Tasks</span>
+        <span class="metric-value">{{ d.totalTasks }}</span>
+      </article>
+      <article class="metric-card">
+        <i class="ti ti-loader metric-icon"></i>
+        <span class="metric-label">Open Tasks</span>
+        <span class="metric-value">{{ d.openTasks }}</span>
+      </article>
+      <article class="metric-card">
+        <i class="ti ti-alert-triangle metric-icon"></i>
+        <span class="metric-label">Overdue</span>
+        <span class="metric-value">{{ d.overdueTasks }}</span>
+      </article>
+      <article class="metric-card">
+        <i class="ti ti-circle-check metric-icon"></i>
+        <span class="metric-label">Completion</span>
+        <span class="metric-value">{{ completionPct() }}%</span>
+      </article>
+      <article class="metric-card">
+        <i class="ti ti-users metric-icon"></i>
+        <span class="metric-label">Active Users (30d)</span>
+        <span class="metric-value">{{ d.activeUsers }}</span>
+      </article>
     </section>
 
+    <p class="section-eyebrow">Charts</p>
     <section class="chart-grid">
       <mat-card>
         <mat-card-title>Tasks by Status</mat-card-title>

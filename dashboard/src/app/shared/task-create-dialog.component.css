@@ -1,0 +1,189 @@
+.dialog-shell {
+  min-width: 520px;
+  max-width: 620px;
+  border-radius: 28px;
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+}
+
+.field-group-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--md-on-surface-hint);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--md-outline);
+}
+
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog-heading .ti {
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--md-on-surface);
+}
+
+.dialog-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  color: var(--md-on-surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog-close:hover {
+  background: var(--md-surface-variant);
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.half-width {
+  flex: 1;
+  min-width: 0;
+}
+
+.priority-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.priority-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.priority-dot--high {
+  background: var(--priority-high-border);
+}
+
+.priority-dot--medium {
+  background: var(--priority-medium-border);
+}
+
+.priority-dot--low {
+  background: var(--priority-low-border);
+}
+
+.slider-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.slider-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-on-surface-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider-row ::ng-deep .mdc-slider__track--active_fill {
+  border-color: var(--primary) !important;
+}
+
+.slider-row mat-slider {
+  width: 100%;
+}
+
+.slider-value {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--on-primary-container);
+  background: var(--primary-container);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--md-outline);
+  padding: 16px 24px;
+  margin: 0 -24px -20px;
+}
+
+.assignee-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assignee-initials {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-size: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host-context(.dark-theme) .dialog-form ::ng-deep .mat-mdc-text-field-wrapper {
+  background: var(--md-surface-variant);
+}
+
+:host-context(.dark-theme) .dialog-form ::ng-deep .mat-mdc-select-value,
+:host-context(.dark-theme) .dialog-form ::ng-deep .mat-mdc-form-field-infix,
+:host-context(.dark-theme) .dialog-form ::ng-deep input,
+:host-context(.dark-theme) .dialog-form ::ng-deep textarea {
+  color: var(--md-on-surface) !important;
+}
