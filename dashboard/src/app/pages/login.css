@@ -1,13 +1,110 @@
 .auth-wrap {
-  min-height: 100vh;
+  position: relative;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  box-sizing: border-box;
+  background: var(--md-background);
+}
+
+.login-theme-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--md-on-surface-secondary);
+  cursor: pointer;
+}
+
+.login-theme-toggle .ti.active {
+  color: var(--primary);
 }
 
 .auth-card {
-  width: 420px;
+  width: 100%;
+  max-width: 400px;
+  max-height: min(560px, calc(100vh - 32px));
+  border-radius: 24px !important;
+  background: var(--md-surface) !important;
+  box-shadow: 0 2px 16px rgba(103, 80, 164, 0.1) !important;
+  overflow: hidden;
+}
+
+:host-context(.dark-theme) .auth-wrap {
+  background: #141218;
+}
+
+:host-context(.dark-theme) .login-theme-toggle {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+:host-context(.dark-theme) .auth-card {
+  background: #1c1b1f !important;
+  border: 1px solid #49454f;
+}
+
+:host-context(.dark-theme) .auth-form .compact-field ::ng-deep .mat-mdc-text-field-wrapper,
+:host-context(.dark-theme) .quick-role-btn {
+  background: #2b2930 !important;
+  color: #cac4d0 !important;
+}
+
+.auth-content {
+  padding: 28px 32px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+.auth-logo-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--logo-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-logo-wrap .ti {
+  font-size: 20px;
+  color: #fff;
+}
+
+.auth-brand-text {
+  min-width: 0;
+}
+
+.auth-app-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--md-on-surface);
+}
+
+.auth-tagline {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--md-on-surface-hint);
 }
 
 .auth-form {
@@ -16,16 +113,80 @@
   gap: 12px;
 }
 
-.error {
-  color: #b00020;
+.auth-form .compact-field {
+  margin: 0;
 }
 
-.demo-hint {
-  margin: 0 16px 16px;
+.auth-form .compact-field ::ng-deep .mat-mdc-text-field-wrapper {
+  height: 44px;
+}
+
+.auth-form .compact-field ::ng-deep .mat-mdc-form-field-infix {
+  min-height: 44px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.auth-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
   font-size: 12px;
-  color: #666;
+  margin: 0;
 }
 
-.demo-hint code {
+.error-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.auth-divider {
+  margin: 0 !important;
+}
+
+.auth-divider span {
   font-size: 11px;
+  color: var(--md-on-surface-hint);
+}
+
+.quick-login-label {
+  margin: 0;
+  font-size: 12px;
+  color: var(--md-on-surface-hint);
+  text-align: center;
+}
+
+.quick-login-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.quick-role-btn {
+  font-size: 11px !important;
+  min-height: 28px !important;
+  line-height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+}
+
+.sign-in-btn {
+  margin: 0 !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 999px !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  background: var(--md-primary) !important;
+  color: var(--md-primary-container) !important;
 }
