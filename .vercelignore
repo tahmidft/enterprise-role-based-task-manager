@@ -1,0 +1,8 @@
+.angular
+dist
+node_modules
+.tmp
+coverage
+**/*.spec.ts
+api-e2e
+docs
