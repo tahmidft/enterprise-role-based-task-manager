@@ -87,6 +87,14 @@
         <div class="audit-resource">{{ row.resource }}</div>
         <div class="audit-summary muted">{{ summary(row) }}</div>
         <div class="audit-expanded" *ngIf="isExpanded(row.id)" (click)="$event.stopPropagation()">
+          <button
+            type="button"
+            class="audit-copy-icon"
+            aria-label="Copy entry"
+            (click)="copyEntry(row); $event.stopPropagation()"
+          >
+            <i class="ti ti-clipboard"></i>
+          </button>
           <div class="meta-grid">
             <div><strong>User:</strong> {{ row.user?.name || 'Unknown' }} ({{ row.user?.email || 'n/a' }})</div>
             <div><strong>Role:</strong> {{ row.metadata?.['role'] || 'n/a' }}</div>
@@ -96,9 +104,6 @@
             <div><strong>Timestamp:</strong> {{ row.createdAt }}</div>
           </div>
           <pre class="metadata-pre">{{ row.metadata | json }}</pre>
-          <button mat-stroked-button type="button" (click)="copyEntry(row); $event.stopPropagation()">
-            <i class="ti ti-clipboard"></i> Copy
-          </button>
         </div>
       </div>
       <div class="audit-entry-side">

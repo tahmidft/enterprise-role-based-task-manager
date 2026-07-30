@@ -174,11 +174,12 @@ mat-chip.chip-evm-red {
 
 .tone-completed {
   background: var(--task-completed-bg) !important;
-  opacity: 0.7;
+  border-left: 3px solid var(--task-completed-border);
 }
 
 .tone-completed .card-title,
-.tone-completed .task-title-cell {
+.tone-completed .task-title-cell,
+.tone-completed .wbs-title {
   text-decoration: line-through;
   color: var(--md-on-surface-hint);
 }
@@ -336,15 +337,10 @@ body.dark-theme {
   }
   .mat-mdc-row.tone-completed {
     background: var(--task-completed-bg) !important;
-    border-left: 3px solid var(--md-outline) !important;
+    border-left: 3px solid var(--task-completed-border) !important;
   }
   .mat-mdc-header-row { background: var(--md-surface-variant) !important; }
   .pill-red { background: var(--priority-chip-high-bg); color: var(--priority-chip-high-fg); }
   .pill-amber { background: var(--priority-chip-medium-bg); color: var(--priority-chip-medium-fg); }
   .pill-green { background: var(--priority-chip-low-bg); color: var(--priority-chip-low-fg); }
-  .tone-completed .card-title,
-  .tone-completed .task-title-cell,
-  .tone-completed .wbs-title {
-    color: #79747e !important;
-  }
 }

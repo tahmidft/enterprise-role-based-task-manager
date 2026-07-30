@@ -1,23 +1,30 @@
 services:
   - type: web
     name: enterprise-role-based-task-manager-api
-    env: node
+    runtime: node
     plan: free
+    region: oregon
+    branch: main
     buildCommand: npm ci --legacy-peer-deps && npx nx build api
     startCommand: node dist/api/main.js
-    healthCheckPath: /api
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3333
+        value: "3333"
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: JWT_EXPIRATION
-        value: 24h
+        value: 15m
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: "7"
       - key: DB_SSL
         value: "true"
+      # First boot: sync schema for demo. Flip to false + migrations for long-lived prod.
       - key: DB_SYNCHRONIZE
-        value: "false"
+        value: "true"
+      - key: CORS_ORIGIN
+        sync: false

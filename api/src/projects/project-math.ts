@@ -14,6 +14,9 @@ export type CpmTask = {
   id: string;
   title: string;
   budgetHours?: number;
+  parentTaskId?: string;
+  startDate?: Date | string;
+  dueDate?: Date | string;
   dependsOn?: Array<{ id: string }>;
 };
 
@@ -85,21 +88,34 @@ export function computeEvmFromTasks(tasks: EvmTask[], referenceDate = new Date()
   return { pv, ev: totals.ev, ac: totals.actual, totalBudgetHours: totals.budget };
 }
 
+function cpmDurationDays(task: CpmTask): number {
+  const start = task.startDate ? new Date(task.startDate) : null;
+  const due = task.dueDate ? new Date(task.dueDate) : null;
+  if (start && due && !Number.isNaN(start.getTime()) && !Number.isNaN(due.getTime()) && due > start) {
+    return Math.max(1, Math.ceil((due.getTime() - start.getTime()) / DAY_MS));
+  }
+  // Fallback when dates are absent: treat budgetHours as day-duration estimates.
+  return task.budgetHours && task.budgetHours > 0 ? task.budgetHours : 1;
+}
+
 export function computeCriticalPath(tasks: CpmTask[]) {
-  const ids = new Set(tasks.map(t => t.id));
-  const duration = (task: CpmTask) => (task.budgetHours && task.budgetHours > 0 ? task.budgetHours : 1);
+  // WBS parents are roll-up nodes — schedule CPM on leaf/work tasks only.
+  const parentIds = new Set(tasks.map(t => t.parentTaskId).filter((id): id is string => !!id));
+  const scheduleTasks = tasks.filter(t => !parentIds.has(t.id));
+  const ids = new Set(scheduleTasks.map(t => t.id));
+  const duration = cpmDurationDays;
   const indegree = new Map<string, number>();
   const outgoing = new Map<string, string[]>();
   const incoming = new Map<string, string[]>();
-  const taskById = new Map(tasks.map(t => [t.id, t]));
+  const taskById = new Map(scheduleTasks.map(t => [t.id, t]));
 
-  for (const task of tasks) {
+  for (const task of scheduleTasks) {
     indegree.set(task.id, 0);
     outgoing.set(task.id, []);
     incoming.set(task.id, []);
   }
 
-  for (const task of tasks) {
+  for (const task of scheduleTasks) {
     for (const dep of task.dependsOn ?? []) {
       if (!ids.has(dep.id)) continue;
       outgoing.get(dep.id)!.push(task.id);
@@ -120,8 +136,8 @@ export function computeCriticalPath(tasks: CpmTask[]) {
     }
   }
 
-  if (topo.length !== tasks.length) {
-    const remaining = tasks.filter(t => !topo.includes(t.id));
+  if (topo.length !== scheduleTasks.length) {
+    const remaining = scheduleTasks.filter(t => !topo.includes(t.id));
     const a = remaining[0]?.title ?? remaining[0]?.id ?? 'A';
     const b = remaining[1]?.title ?? remaining[1]?.id ?? remaining[0]?.id ?? 'B';
     throw new BadRequestException(`Circular dependency detected between tasks ${a} and ${b}`);

@@ -46,6 +46,7 @@ import { MatDialogModule } from '@angular/material/dialog';
       <section class="help-section">
         <h3 class="help-subtitle">Quick tips</h3>
         <ul class="help-list">
+          <li>Use the <strong>⋮</strong> menu to export CSV reports, filter the board, open shortcuts, or report bugs.</li>
           <li>Use <kbd>Ctrl</kbd> + <kbd>K</kbd> to focus top search.</li>
           <li>Use <kbd>[</kbd> to collapse or expand the sidebar.</li>
           <li>Use the bell panel to mark notifications as read or clear them.</li>

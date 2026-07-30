@@ -42,7 +42,7 @@ export class PriorityAgingService {
           resourceId: task.id,
           ipAddress: 'system',
           userAgent: 'priority-aging-scheduler',
-          metadata: { oldPriority, newPriority, ageDays },
+          metadata: { title: task.title, oldPriority, newPriority, ageDays },
         });
       }
     }

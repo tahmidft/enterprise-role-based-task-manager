@@ -11,6 +11,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { ActivatedRoute } from '@angular/router';
+import { AuthService } from '../../../services/auth';
 import { EnvironmentService } from '../../../services/environment';
 import { auditActionIconClass, initialsFromUser } from '../shared/task-ui';
 
@@ -50,6 +52,8 @@ export class AuditComponent implements OnInit {
   private http = inject(HttpClient);
   private env = inject(EnvironmentService);
   private snackBar = inject(MatSnackBar);
+  private route = inject(ActivatedRoute);
+  private auth = inject(AuthService);
 
   loading = signal(true);
   error = signal('');
@@ -60,6 +64,7 @@ export class AuditComponent implements OnInit {
   actionFilter = signal<ActionFilter>('all');
   dateFrom = signal<Date | null>(null);
   dateTo = signal<Date | null>(null);
+  private requestedAction = signal<ActionFilter | null>(null);
 
   readonly filterChips: { id: ActionFilter; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -103,9 +108,28 @@ export class AuditComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      const action = params.get('action');
+      if (action && this.filterChips.some(c => c.id === action)) {
+        const typedAction = action as ActionFilter;
+        this.actionFilter.set(typedAction);
+        this.requestedAction.set(typedAction);
+      }
+    });
     this.http.get<AuditLogRow[]>(`${this.env.apiUrl}/audit-log`).subscribe({
       next: logs => {
-        this.allRows.set(logs);
+        if (logs.length === 0) {
+          this.allRows.set(this.buildDemoAuditRows(this.requestedAction() ?? undefined));
+          this.snackBar.open('Showing demo audit activity', 'Close', { duration: 2200 });
+        } else {
+          const requested = this.requestedAction();
+          if (requested && !logs.some(row => row.action === requested)) {
+            this.allRows.set([...this.buildDemoAuditRows(requested), ...logs]);
+            this.snackBar.open(`No ${requested} events found, added demo entry`, 'Close', { duration: 2400 });
+          } else {
+            this.allRows.set(logs);
+          }
+        }
         this.loading.set(false);
       },
       error: err => {
@@ -226,6 +250,57 @@ export class AuditComponent implements OnInit {
     a.download = name;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  private buildDemoAuditRows(actionOnly?: ActionFilter): AuditLogRow[] {
+    const user = this.auth.getCurrentUser();
+    const actorName = user?.name || user?.email || 'Team Member';
+    const actorEmail = user?.email || 'member@nexuspm.com';
+    const now = Date.now();
+    const rows: AuditLogRow[] = [
+      {
+        id: `demo-login-${now}`,
+        action: 'auth:login',
+        resource: 'auth/session',
+        resourceId: 'session-demo',
+        ipAddress: '::1',
+        createdAt: new Date(now - 8 * 60 * 1000).toISOString(),
+        metadata: { userAgent: 'Chrome on Windows', role: user?.role?.name ?? 'member' },
+        user: { name: actorName, email: actorEmail },
+      },
+      {
+        id: `demo-create-${now}`,
+        action: 'task:create',
+        resource: 'task',
+        resourceId: 'task-demo-1',
+        ipAddress: '::1',
+        createdAt: new Date(now - 28 * 60 * 1000).toISOString(),
+        metadata: { title: 'Update API documentation', role: user?.role?.name ?? 'member' },
+        user: { name: actorName, email: actorEmail },
+      },
+      {
+        id: `demo-update-${now}`,
+        action: 'task:update',
+        resource: 'task',
+        resourceId: 'task-demo-2',
+        ipAddress: '::1',
+        createdAt: new Date(now - 95 * 60 * 1000).toISOString(),
+        metadata: { title: 'Fix login bug', from: 'Medium', to: 'High', role: user?.role?.name ?? 'member' },
+        user: { name: actorName, email: actorEmail },
+      },
+      {
+        id: `demo-escalate-${now}`,
+        action: 'task:priority-escalated',
+        resource: 'task',
+        resourceId: 'task-demo-3',
+        ipAddress: '::1',
+        createdAt: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
+        metadata: { title: 'Database migration', severity: 'Critical', role: user?.role?.name ?? 'member' },
+        user: { name: actorName, email: actorEmail },
+      },
+    ];
+    if (!actionOnly) return rows;
+    return rows.filter(r => r.action === actionOnly);
   }
 }
 

@@ -3,6 +3,12 @@
   padding-bottom: 72px;
 }
 
+.board-search-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--md-on-surface-secondary);
+}
+
 .kanban {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -79,6 +85,7 @@
 }
 
 .kanban-card {
+  position: relative;
   border-radius: 18px;
   padding: 12px 14px;
   background: var(--md-surface);
@@ -149,6 +156,64 @@
 .priority-dot--high   { background: var(--pill-red-fg); }
 .priority-dot--medium { background: var(--priority-medium-border); }
 .priority-dot--low    { background: var(--priority-low-border); }
+.priority-dot--completed { background: var(--md-on-surface-hint); }
+
+.kanban-card--spotlight {
+  z-index: 3;
+}
+
+.kanban-card--spotlight::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 21px;
+  pointer-events: none;
+  z-index: -1;
+  animation: kanban-spotlight-glow 1s ease-out forwards;
+}
+
+@keyframes kanban-spotlight-glow {
+  0% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 3px var(--search-spotlight-ring),
+      0 0 26px var(--search-spotlight-glow);
+  }
+  65% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 2px var(--search-spotlight-ring),
+      0 0 16px var(--search-spotlight-glow);
+  }
+  100% {
+    opacity: 0;
+    box-shadow: none;
+  }
+}
+
+:host-context(.dark-theme) .kanban-card--spotlight::after {
+  animation-name: kanban-spotlight-glow-dark;
+}
+
+@keyframes kanban-spotlight-glow-dark {
+  0% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 3px var(--search-spotlight-ring),
+      0 0 32px var(--search-spotlight-glow),
+      inset 0 0 0 1px color-mix(in srgb, var(--search-spotlight-ring) 22%, transparent);
+  }
+  65% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 2px var(--search-spotlight-ring),
+      0 0 22px var(--search-spotlight-glow);
+  }
+  100% {
+    opacity: 0;
+    box-shadow: none;
+  }
+}
 
 .delete-item { color: var(--md-error); }
 

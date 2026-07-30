@@ -18,6 +18,14 @@ export class ProjectsService {
     @Inject(REQUEST) private readonly request: Request,
   ) {}
 
+  async listForOrganization(user: User): Promise<Array<{ id: string; name: string; description?: string }>> {
+    const projects = await this.projectRepo.find({
+      where: { organizationId: user.organizationId },
+      order: { name: 'ASC' },
+    });
+    return projects.map(p => ({ id: p.id, name: p.name, description: p.description }));
+  }
+
   async getEvm(projectId: string, user: User) {
     this.ensurePlanningRole(user);
     const project = await this.ensureProjectAccess(projectId, user);

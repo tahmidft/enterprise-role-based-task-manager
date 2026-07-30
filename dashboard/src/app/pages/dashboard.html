@@ -55,53 +55,323 @@
     <p class="section-eyebrow">Structure &amp; schedule</p>
 
     <section class="grid-two">
-      <mat-card class="panel-card wbs-card">
-        <mat-card-header>
-          <mat-card-title>Work Breakdown Structure</mat-card-title>
-        </mat-card-header>
-        <mat-card-content class="panel-content wbs-panel-content">
-          <mat-tree [dataSource]="treeDataSource" [treeControl]="treeControl">
-            <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding class="wbs-row" [ngClass]="rowTone(node.priority, node.status === 'completed')">
-              <button mat-icon-button disabled aria-hidden="true"></button>
-              <span class="wbs-title">{{ node.title }}</span>
-              <span [class]="statusPill(node.status)">{{ node.status | titlecase }}</span>
-              <button mat-button type="button" class="wbs-action" (click)="createSubtask(node)">+ Subtask</button>
-            </mat-tree-node>
-            <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild">
-              <div class="mat-tree-node wbs-row" [ngClass]="rowTone(node.priority, node.status === 'completed')">
-                <button mat-icon-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.title">
-                  <mat-icon>{{ treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right' }}</mat-icon>
-                </button>
-                <span class="wbs-title">{{ node.title }}</span>
-                <span [class]="statusPill(node.status)">{{ node.status | titlecase }}</span>
-                <button mat-button type="button" class="wbs-action" (click)="createSubtask(node)">+ Subtask</button>
-              </div>
-              <div class="wbs-children" [class.tree-invisible]="!treeControl.isExpanded(node)">
-                <ng-container matTreeNodeOutlet></ng-container>
-              </div>
-            </mat-nested-tree-node>
-          </mat-tree>
-        </mat-card-content>
-      </mat-card>
-
       <mat-card class="panel-card graph-card">
         <mat-card-header>
           <mat-card-title>Critical Path (CPM)</mat-card-title>
         </mat-card-header>
         <mat-card-content class="panel-content graph-card-content">
-          <div class="cpm-legend">
-            <span class="legend-item"><span class="swatch swatch-critical"></span> Critical path</span>
-            <span class="legend-item"><span class="swatch swatch-normal"></span> Non-critical</span>
-            <span class="legend-item"><span class="arrow-sample">→</span> Dependency</span>
-          </div>
-          <div *ngIf="cpmLoading()" class="graph-state">
-            <mat-spinner diameter="28"></mat-spinner>
-          </div>
-          <div *ngIf="!cpmLoading() && cpmEmpty()" class="graph-empty">
-            <i class="ti ti-git-branch"></i>
-            <p>No task dependencies defined yet</p>
-          </div>
-          <div #graphContainer class="graph"></div>
+          <app-cpm-gantt-chart
+            [nodes]="criticalPath()?.nodes ?? []"
+            [criticalTaskIds]="criticalPath()?.criticalTaskIds ?? []"
+            [criticalEdges]="criticalPath()?.criticalEdges ?? []"
+            [taskMeta]="cpmTaskMeta()"
+            [loading]="cpmLoading()"
+            (taskClick)="onGanttTaskClick($event)"
+          />
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="panel-card wbs-card">
+        <mat-card-header>
+          <mat-card-title>Work Breakdown Structure</mat-card-title>
+        </mat-card-header>
+        <mat-card-content class="panel-content wbs-panel-content">
+          <mat-tree
+            [dataSource]="treeDataSource"
+            [treeControl]="treeControl"
+            cdkDropList
+            [cdkDropListData]="treeDataSource.data"
+            (cdkDropListDropped)="drop($event)"
+          >
+            <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding
+              cdkDrag
+              class="wbs-row"
+              [class.tone-completed]="node.status === 'completed'"
+              [class.tone-high]="node.priority === 'high' || node.priority === 'critical'"
+              [class.tone-medium]="node.priority === 'medium'"
+              [class.tone-low]="node.priority === 'low'"
+              [class.wbs-row--overdue]="isOverdue(node)"
+              [matTooltip]="rowTooltip(node)"
+              matTooltipPosition="above"
+              [matTooltipClass]="'wbs-row-tooltip'"
+            >
+              <button mat-icon-button disabled aria-hidden="true" class="wbs-toggle-spacer">
+                <mat-icon cdkDragHandle class="wbs-drag-icon">drag_indicator</mat-icon>
+              </button>
+
+              <span class="wbs-title" [matTooltip]="node.description || node.title" matTooltipPosition="above">{{ node.title }}</span>
+
+              <div class="wbs-avatar-wrap">
+                <button
+                  type="button"
+                  class="wbs-avatar-btn"
+                  (click)="toggleAssigneePicker(node, $event)"
+                  [attr.aria-label]="'Assign ' + node.title"
+                  [attr.aria-expanded]="assigneePickerTaskId() === node.id"
+                >
+                  <img
+                    *ngIf="assigneeAvatarUrl(node) as avatarUrl; else leafAssigneeFallback"
+                    class="wbs-avatar wbs-avatar--photo"
+                    [src]="avatarUrl"
+                    alt=""
+                  />
+                  <ng-template #leafAssigneeFallback>
+                    <span
+                      *ngIf="assigneeInitials(node); else leafUnassignedAvatar"
+                      class="wbs-avatar"
+                      [style.background-color]="assigneeColor(node)"
+                    >{{ assigneeInitials(node) }}</span>
+                    <ng-template #leafUnassignedAvatar>
+                      <span class="wbs-avatar wbs-avatar--unassigned">
+                        <i class="ti ti-user-plus wbs-avatar-ti" aria-hidden="true"></i>
+                      </span>
+                    </ng-template>
+                  </ng-template>
+                </button>
+                <div
+                  class="wbs-assignee-picker"
+                  *ngIf="assigneePickerTaskId() === node.id"
+                  (click)="$event.stopPropagation()"
+                  role="listbox"
+                  [attr.aria-label]="'Choose assignee for ' + node.title"
+                >
+                  <button
+                    type="button"
+                    class="wbs-assignee-option"
+                    *ngFor="let m of teamMembers()"
+                    (click)="assignTask(node, m.id)"
+                    role="option"
+                  >
+                    <span class="wbs-avatar wbs-avatar--sm" [style.background-color]="m.color">{{ m.initials }}</span>
+                    <span class="wbs-assignee-option-name">{{ m.name }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="wbs-assignee-option wbs-assignee-option--muted"
+                    *ngIf="node.assignedToId"
+                    (click)="assignTask(node, null)"
+                    role="option"
+                  >
+                    <span class="wbs-avatar wbs-avatar--sm wbs-avatar--unassigned">
+                      <i class="ti ti-user-plus wbs-avatar-ti" aria-hidden="true"></i>
+                    </span>
+                    <span class="wbs-assignee-option-name">Unassign</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="wbs-meta">
+                <div class="wbs-progress-compact">
+                  <div class="wbs-progress-track">
+                    <div
+                      class="wbs-progress-fill"
+                      [style.width.%]="node.completionPercent"
+                      [class.wbs-progress-fill--done]="node.completionPercent >= 100"
+                    ></div>
+                  </div>
+                  <span class="wbs-progress-pct">{{ node.completionPercent }}%</span>
+                </div>
+
+                <span [class]="statusPill(node.status)" class="wbs-status-badge">{{ node.status | titlecase }}</span>
+
+                <span class="wbs-priority-pill"
+                  [class.wbs-priority-high]="node.priority === 'high' || node.priority === 'critical'"
+                  [class.wbs-priority-medium]="node.priority === 'medium'"
+                  [class.wbs-priority-low]="node.priority === 'low'"
+                >{{ node.priority }}</span>
+
+                <span class="wbs-overdue-badge" *ngIf="isOverdue(node)">Overdue</span>
+
+                <span class="wbs-dates" *ngIf="dateRange(node)">{{ dateRange(node) }}</span>
+
+                <ng-container *ngIf="editingHoursId() !== node.id; else hoursEditor">
+                  <span
+                    class="wbs-hours wbs-hours--editable"
+                    [class.wbs-hours--overbudget]="isOverBudget(node)"
+                    (click)="startEditHours(node)"
+                  >{{ budgetLabel(node) }}</span>
+                </ng-container>
+                <ng-template #hoursEditor>
+                  <input
+                    #hoursInput
+                    class="wbs-hours-input"
+                    type="number"
+                    min="0"
+                    [value]="getHours(node)"
+                    (blur)="saveHours(node, hoursInput.value)"
+                    (keydown.enter)="saveHours(node, hoursInput.value)"
+                    (keydown.escape)="cancelEditHours()"
+                    (click)="$event.stopPropagation()"
+                    autofocus
+                  />
+                </ng-template>
+
+                <span class="wbs-variance-label" *ngIf="node.budgetHours != null">/ {{ node.budgetHours }}h planned</span>
+
+                <span class="wbs-dep-badge wbs-dep-badge--blocked" *ngIf="blockedByLabel(node)">{{ blockedByLabel(node) }}</span>
+                <span class="wbs-dep-badge wbs-dep-badge--blocks" *ngIf="!blockedByLabel(node) && blocksLabel(node)">{{ blocksLabel(node) }}</span>
+
+                <button mat-button type="button" class="wbs-action" (click)="createSubtask(node)">
+                  <mat-icon class="wbs-action-icon">add</mat-icon>
+                  Subtask
+                </button>
+              </div>
+            </mat-tree-node>
+
+            <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild"
+              cdkDrag
+              [class.wbs-row--overdue]="isOverdue(node)"
+            >
+              <div
+                class="mat-tree-node wbs-row"
+                [class.tone-completed]="node.status === 'completed'"
+                [class.tone-high]="node.priority === 'high' || node.priority === 'critical'"
+                [class.tone-medium]="node.priority === 'medium'"
+                [class.tone-low]="node.priority === 'low'"
+                [matTooltip]="rowTooltip(node)"
+                matTooltipPosition="above"
+                [matTooltipClass]="'wbs-row-tooltip'"
+              >
+                <mat-icon cdkDragHandle class="wbs-drag-handle">drag_indicator</mat-icon>
+
+                <button mat-icon-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.title">
+                  <mat-icon class="wbs-toggle-icon">{{ treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right' }}</mat-icon>
+                </button>
+
+                <span class="wbs-title" [matTooltip]="node.description || node.title" matTooltipPosition="above">{{ node.title }}</span>
+
+                <div class="wbs-avatar-wrap">
+                  <button
+                    type="button"
+                    class="wbs-avatar-btn"
+                    (click)="toggleAssigneePicker(node, $event)"
+                    [attr.aria-label]="'Assign ' + node.title"
+                    [attr.aria-expanded]="assigneePickerTaskId() === node.id"
+                  >
+                    <img
+                      *ngIf="assigneeAvatarUrl(node) as avatarUrl; else parentAssigneeFallback"
+                      class="wbs-avatar wbs-avatar--photo"
+                      [src]="avatarUrl"
+                      alt=""
+                    />
+                    <ng-template #parentAssigneeFallback>
+                      <span
+                        *ngIf="assigneeInitials(node); else parentUnassignedAvatar"
+                        class="wbs-avatar"
+                        [style.background-color]="assigneeColor(node)"
+                      >{{ assigneeInitials(node) }}</span>
+                      <ng-template #parentUnassignedAvatar>
+                        <span class="wbs-avatar wbs-avatar--unassigned">
+                          <i class="ti ti-user-plus wbs-avatar-ti" aria-hidden="true"></i>
+                        </span>
+                      </ng-template>
+                    </ng-template>
+                  </button>
+                  <div
+                    class="wbs-assignee-picker"
+                    *ngIf="assigneePickerTaskId() === node.id"
+                    (click)="$event.stopPropagation()"
+                    role="listbox"
+                    [attr.aria-label]="'Choose assignee for ' + node.title"
+                  >
+                    <button
+                      type="button"
+                      class="wbs-assignee-option"
+                      *ngFor="let m of teamMembers()"
+                      (click)="assignTask(node, m.id)"
+                      role="option"
+                    >
+                      <span class="wbs-avatar wbs-avatar--sm" [style.background-color]="m.color">{{ m.initials }}</span>
+                      <span class="wbs-assignee-option-name">{{ m.name }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="wbs-assignee-option wbs-assignee-option--muted"
+                      *ngIf="node.assignedToId"
+                      (click)="assignTask(node, null)"
+                      role="option"
+                    >
+                      <span class="wbs-avatar wbs-avatar--sm wbs-avatar--unassigned">
+                        <i class="ti ti-user-plus wbs-avatar-ti" aria-hidden="true"></i>
+                      </span>
+                      <span class="wbs-assignee-option-name">Unassign</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="wbs-meta">
+                  <div class="wbs-progress-compact">
+                    <div class="wbs-progress-track">
+                      <div
+                        class="wbs-progress-fill"
+                        [style.width.%]="aggregateCompletion(node)"
+                        [class.wbs-progress-fill--done]="aggregateCompletion(node) >= 100"
+                      ></div>
+                    </div>
+                    <span class="wbs-progress-pct">{{ aggregateCompletion(node) }}%</span>
+                  </div>
+
+                  <span class="wbs-subtask-badge" *ngIf="subtaskCount(node) > 0">
+                    <mat-icon class="wbs-subtask-icon">account_tree</mat-icon>
+                    {{ subtaskCount(node) }}
+                  </span>
+
+                  <span [class]="statusPill(node.status)" class="wbs-status-badge">{{ node.status | titlecase }}</span>
+
+                  <span class="wbs-priority-pill"
+                    [class.wbs-priority-high]="node.priority === 'high' || node.priority === 'critical'"
+                    [class.wbs-priority-medium]="node.priority === 'medium'"
+                    [class.wbs-priority-low]="node.priority === 'low'"
+                  >{{ node.priority }}</span>
+
+                  <span class="wbs-overdue-badge" *ngIf="isOverdue(node)">Overdue</span>
+
+                  <span class="wbs-dates" *ngIf="dateRange(node)">{{ dateRange(node) }}</span>
+
+                  <ng-container *ngIf="editingHoursId() !== node.id; else parentHoursEditor">
+                    <span
+                      class="wbs-hours wbs-hours--editable"
+                      [class.wbs-hours--overbudget]="isOverBudget(node)"
+                      (click)="startEditHours(node)"
+                    >{{ totalBudgetLabel(node) }}</span>
+                  </ng-container>
+                  <ng-template #parentHoursEditor>
+                    <input
+                      #phInput
+                      class="wbs-hours-input"
+                      type="number"
+                      min="0"
+                      [value]="getHours(node)"
+                      (blur)="saveHours(node, phInput.value)"
+                      (keydown.enter)="saveHours(node, phInput.value)"
+                      (keydown.escape)="cancelEditHours()"
+                      (click)="$event.stopPropagation()"
+                      autofocus
+                    />
+                  </ng-template>
+
+                  <span class="wbs-variance-label" *ngIf="node.budgetHours != null">/ {{ node.budgetHours }}h planned</span>
+
+                  <span class="wbs-dep-badge wbs-dep-badge--blocked" *ngIf="blockedByLabel(node)">{{ blockedByLabel(node) }}</span>
+                  <span class="wbs-dep-badge wbs-dep-badge--blocks" *ngIf="!blockedByLabel(node) && blocksLabel(node)">{{ blocksLabel(node) }}</span>
+
+                  <button mat-button type="button" class="wbs-action" (click)="createSubtask(node)">
+                    <mat-icon class="wbs-action-icon">add</mat-icon>
+                    Subtask
+                  </button>
+                </div>
+              </div>
+              <div
+                class="wbs-children"
+                [class.tree-invisible]="!treeControl.isExpanded(node)"
+                cdkDropList
+                [cdkDropListData]="node.children"
+                (cdkDropListDropped)="drop($event)"
+              >
+                <ng-container matTreeNodeOutlet></ng-container>
+              </div>
+            </mat-nested-tree-node>
+          </mat-tree>
         </mat-card-content>
       </mat-card>
     </section>

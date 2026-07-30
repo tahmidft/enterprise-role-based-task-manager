@@ -97,7 +97,7 @@ export class AuthService {
         id: payload.sub,
         email: payload.email,
         name: payload.name || payload.email,
-        role: payload.role,
+        role: payload.role ? { name: payload.role } : undefined,
         organizationId: payload.organizationId,
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -37,6 +37,7 @@ export class AuditService {
     return this.auditRepo
       .createQueryBuilder('audit')
       .leftJoinAndSelect('audit.user', 'user')
+      .leftJoinAndSelect('user.role', 'role')
       .where('user.organizationId = :organizationId', { organizationId })
       .orderBy('audit.createdAt', 'DESC')
       .limit(100)
