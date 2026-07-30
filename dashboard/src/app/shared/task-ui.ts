@@ -51,6 +51,21 @@ export function priorityChipClass(priority: string): string {
   }
 }
 
+export function priorityDotClass(priority: string, status?: string): string {
+  if (status === 'completed') return 'priority-dot priority-dot--completed';
+  switch (priority) {
+    case 'high':
+    case 'critical':
+      return 'priority-dot priority-dot--high';
+    case 'medium':
+      return 'priority-dot priority-dot--medium';
+    case 'low':
+      return 'priority-dot priority-dot--low';
+    default:
+      return 'priority-dot priority-dot--medium';
+  }
+}
+
 /** Kanban card / table row tonal surface by priority */
 export function priorityToneClass(priority: string, completed = false): string {
   if (completed) return 'tone-completed';

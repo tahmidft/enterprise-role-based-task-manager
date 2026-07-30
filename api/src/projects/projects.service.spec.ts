@@ -66,4 +66,30 @@ describe('Project math algorithms', () => {
     expect(result.nodes.find(n => n.taskId === 'c')?.criticalPath).toBe(false);
     expect(result.nodes.find(n => n.taskId === 'c')?.float).toBeGreaterThan(0);
   });
+
+  it('prefers calendar dates for duration and skips WBS parents', () => {
+    const epic = {
+      ...makeTask('epic', 120, 50, 60, new Date('2026-05-01'), new Date('2026-06-15')),
+      parentTaskId: undefined as string | undefined,
+    };
+    const api = {
+      ...makeTask('api', 40, 100, 44, new Date('2026-05-01'), new Date('2026-05-20')),
+      parentTaskId: 'epic',
+    };
+    const fe = {
+      ...makeTask('fe', 50, 35, 20, new Date('2026-05-15'), new Date('2026-06-20')),
+      parentTaskId: 'epic',
+    };
+    const uat = {
+      ...makeTask('uat', 10, 0, 0, new Date('2026-06-20'), new Date('2026-06-30')),
+      dependsOn: [{ id: 'api' }, { id: 'fe' }],
+    };
+    const result = computeCriticalPath([epic, api, fe, uat]);
+    expect(result.nodes.map(n => n.taskId)).not.toContain('epic');
+    expect(result.nodes.find(n => n.taskId === 'api')?.duration).toBe(19);
+    expect(result.nodes.find(n => n.taskId === 'fe')?.duration).toBe(36);
+    expect(result.nodes.find(n => n.taskId === 'uat')?.duration).toBe(10);
+    expect(result.criticalTaskIds).toEqual(expect.arrayContaining(['fe', 'uat']));
+    expect(result.criticalEdges).toEqual([{ from: 'fe', to: 'uat' }]);
+  });
 });

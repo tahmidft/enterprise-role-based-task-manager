@@ -144,6 +144,7 @@ npx nx serve dashboard
 ┌─────────────────────────────────────────────────┐
 │                   MEMBER                        │
 │  + tasks:create/read/update                     │
+│  + audit:read                                   │
 │  - Limited to own assigned tasks                │
 └─────────────────────────────────────────────────┘
                       │
@@ -151,6 +152,7 @@ npx nx serve dashboard
 ┌─────────────────────────────────────────────────┐
 │                   VIEWER                        │
 │  + Read assigned tasks only                     │
+│  + audit:read                                   │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -166,7 +168,7 @@ npx nx serve dashboard
 | users:read | Yes | Yes | Yes | No | Yes (limited) |
 | users:update | Yes | Yes | No | No | No |
 | users:delete | Yes | No | No | No | No |
-| audit:read | Yes | Yes | Yes | No | No |
+| audit:read | Yes | Yes | Yes | Yes | Yes |
 
 ### Authorization Flow
 
@@ -350,8 +352,8 @@ curl -s -X POST http://localhost:3333/api/tasks \
   -H "Content-Type: application/json" \
   -d '{"title":"Should Fail"}' | jq
 
-# Returns 403 — Viewer cannot access audit logs
-curl -s http://localhost:3333/api/audit-log -H "Authorization: Bearer $VIEWER_TOKEN" | jq
+# Returns 200 — Viewer can read audit logs (demo seed grants audit:read)
+curl -s http://localhost:3333/api/audit-log -H "Authorization: Bearer $VIEWER_TOKEN" | jq 'length'
 ```
 
 ---

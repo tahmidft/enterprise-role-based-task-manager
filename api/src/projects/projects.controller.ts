@@ -11,6 +11,12 @@ import { ProjectsService } from './projects.service';
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
+  @Get()
+  @Permissions('tasks:read')
+  listProjects(@CurrentUser() user: User) {
+    return this.projectsService.listForOrganization(user);
+  }
+
   @Get(':id/evm')
   @Permissions('tasks:read')
   getEvm(@Param('id') projectId: string, @CurrentUser() user: User) {

@@ -143,9 +143,58 @@
     <header class="top-bar">
       <h1 class="topbar-title">{{ pageTitle() }}</h1>
       <div class="topbar-actions">
-        <div class="search-pill">
-          <i class="ti ti-search"></i>
-          <input #topSearch type="search" placeholder="Search tasks…" [(ngModel)]="searchQuery" aria-label="Search" />
+        <div #searchWrap class="search-wrap" [class.search-wrap--open]="searchSuggestionsOpen()">
+          <div class="search-pill">
+            <i class="ti ti-search"></i>
+            <input
+              #topSearch
+              type="search"
+              placeholder="Search tasks…"
+              [(ngModel)]="searchQuery"
+              (input)="onSearchInput()"
+              (focus)="onSearchFocus()"
+              (blur)="onSearchBlur()"
+              (keydown)="onSearchKeydown($event)"
+              (search)="onSearchClear()"
+              autocomplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              [attr.aria-expanded]="searchSuggestionsOpen()"
+              aria-controls="task-search-listbox"
+              aria-label="Search tasks"
+            />
+          </div>
+          <ul
+            *ngIf="searchSuggestionsOpen()"
+            id="task-search-listbox"
+            class="search-suggestions"
+            role="listbox"
+            aria-label="Task suggestions"
+          >
+            <li
+              *ngFor="let hit of searchSuggestions(); let i = index"
+              role="option"
+              class="search-suggestion"
+              [class.search-suggestion--active]="i === searchActiveIndex()"
+              [attr.aria-selected]="i === searchActiveIndex()"
+              (mousedown)="selectSearchHit(hit, $event)"
+            >
+              <span
+                class="search-suggestion-dot"
+                [ngClass]="priorityDotClass(hit.priority, hit.status)"
+                aria-hidden="true"
+              ></span>
+              <span class="search-suggestion-body">
+                <span class="search-suggestion-title">
+                  <ng-container *ngFor="let part of suggestionTitleParts(hit.title)">
+                    <mark *ngIf="part.match">{{ part.text }}</mark>
+                    <ng-container *ngIf="!part.match">{{ part.text }}</ng-container>
+                  </ng-container>
+                </span>
+                <span class="search-suggestion-meta">{{ taskStatusLabel(hit.status) }}</span>
+              </span>
+            </li>
+          </ul>
         </div>
         <button type="button" class="icon-btn" aria-label="Notifications" (click)="openNotifications()">
           <i class="ti ti-bell"></i>
@@ -157,9 +206,14 @@
       </div>
 
       <mat-menu #moreMenu="matMenu">
-        <ng-container *ngFor="let item of menuItems()">
+        <ng-container *ngFor="let item of moreMenuItems(); trackBy: trackMenuItem">
           <mat-divider *ngIf="item.label === '---'"></mat-divider>
-          <button *ngIf="item.label !== '---'" mat-menu-item (click)="runMenuAction(item.action)">
+          <button
+            *ngIf="item.label !== '---'"
+            mat-menu-item
+            type="button"
+            (click)="onMoreMenuAction(item.action)"
+          >
             <i class="ti topbar-menu-icon" [ngClass]="item.icon"></i> {{ item.label }}
           </button>
         </ng-container>

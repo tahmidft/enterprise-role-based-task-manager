@@ -35,7 +35,7 @@ export class TasksService {
   ): Promise<{ data: Task[]; total: number; page: number; limit: number }> {
     const isOwnTaskOnlyRole = user.role.name === 'viewer' || user.role.name === 'member';
     const page = Math.max(1, Number(query.page ?? 1));
-    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)));
+    const limit = Math.min(500, Math.max(1, Number(query.limit ?? 20)));
 
     const whereBase: Record<string, unknown> = {
       organizationId: user.organizationId,

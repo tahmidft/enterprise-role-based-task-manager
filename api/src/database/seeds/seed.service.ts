@@ -62,19 +62,25 @@ export class SeedService {
       {
         name: 'member',
         description: 'Team member',
-        permissions: ['tasks:create', 'tasks:read', 'tasks:update'],
+        permissions: ['tasks:create', 'tasks:read', 'tasks:update', 'audit:read'],
       },
       {
         name: 'viewer',
         description: 'Viewer with read-only access',
-        permissions: ['tasks:read', 'users:read'],
+        permissions: ['tasks:read', 'users:read', 'audit:read'],
       },
     ];
 
     for (const roleSeed of roleSeeds) {
       await this.roleRepo.upsert({ name: roleSeed.name, description: roleSeed.description }, ['name']);
-      const role = await this.roleRepo.findOneByOrFail({ name: roleSeed.name });
-      role.permissions = roleSeed.permissions.map(name => byPerm.get(name)!).filter(Boolean);
+      const role = await this.roleRepo.findOne({
+        where: { name: roleSeed.name },
+        relations: ['permissions'],
+      });
+      if (!role) continue;
+      role.permissions = roleSeed.permissions
+        .map(name => byPerm.get(name))
+        .filter((p): p is Permission => !!p);
       await this.roleRepo.save(role);
     }
 
@@ -158,9 +164,56 @@ export class SeedService {
     };
   }
 
-  /** Demo schedule window used for EVM planned value (PV) calculations. */
-  private static readonly DEMO_START = new Date('2026-05-01T00:00:00.000Z');
-  private static readonly DEMO_DUE = new Date('2026-06-30T23:59:59.999Z');
+  /** Per-task demo schedule (explicit dates for CPM / Gantt). */
+  private static readonly TASK_SCHEDULE: Record<
+    string,
+    {
+      startDate: Date;
+      dueDate: Date;
+      budgetHours: number;
+      actualHours: number;
+      completionPercent: number;
+      priority: 'low' | 'medium' | 'high';
+      status: 'pending' | 'in-progress' | 'completed';
+    }
+  > = {
+    'Build dashboard epic': {
+      startDate: new Date('2026-05-01'),
+      dueDate: new Date('2026-06-15'),
+      budgetHours: 120,
+      actualHours: 64,
+      completionPercent: 55,
+      priority: 'high',
+      status: 'in-progress',
+    },
+    'Implement API contracts': {
+      startDate: new Date('2026-05-01'),
+      dueDate: new Date('2026-05-20'),
+      budgetHours: 40,
+      actualHours: 44,
+      completionPercent: 100,
+      priority: 'high',
+      status: 'completed',
+    },
+    'Implement Angular dashboard': {
+      startDate: new Date('2026-05-15'),
+      dueDate: new Date('2026-06-20'),
+      budgetHours: 50,
+      actualHours: 20,
+      completionPercent: 35,
+      priority: 'medium',
+      status: 'in-progress',
+    },
+    'UAT signoff': {
+      startDate: new Date('2026-06-20'),
+      dueDate: new Date('2026-06-30'),
+      budgetHours: 10,
+      actualHours: 0,
+      completionPercent: 0,
+      priority: 'low',
+      status: 'pending',
+    },
+  };
 
   private async seedWebsiteRevampTasks(
     projectId: string,
@@ -179,17 +232,18 @@ export class SeedService {
     });
 
     if (existing.length === 0) {
+      const epic = SeedService.TASK_SCHEDULE['Build dashboard epic'];
       const parent = await this.taskRepo.save(
         this.taskRepo.create({
           title: 'Build dashboard epic',
           description: 'Parent task for dashboard delivery',
           status: 'in-progress',
           priority: 'high',
-          startDate: SeedService.DEMO_START,
-          dueDate: SeedService.DEMO_DUE,
-          budgetHours: 120,
-          actualHours: 64,
-          completionPercent: 55,
+          startDate: epic.startDate,
+          dueDate: epic.dueDate,
+          budgetHours: epic.budgetHours,
+          actualHours: epic.actualHours,
+          completionPercent: epic.completionPercent,
           assignedToId: users.managerId,
           createdById: users.ownerId,
           organizationId,
@@ -197,17 +251,18 @@ export class SeedService {
         }),
       );
 
+      const api = SeedService.TASK_SCHEDULE['Implement API contracts'];
       const child1 = await this.taskRepo.save(
         this.taskRepo.create({
           title: 'Implement API contracts',
           description: 'Backend API implementation',
           status: 'completed',
           priority: 'high',
-          startDate: SeedService.DEMO_START,
-          dueDate: SeedService.DEMO_DUE,
-          budgetHours: 40,
-          actualHours: 44,
-          completionPercent: 100,
+          startDate: api.startDate,
+          dueDate: api.dueDate,
+          budgetHours: api.budgetHours,
+          actualHours: api.actualHours,
+          completionPercent: api.completionPercent,
           assignedToId: users.adminId,
           createdById: users.ownerId,
           organizationId,
@@ -216,17 +271,18 @@ export class SeedService {
         }),
       );
 
+      const fe = SeedService.TASK_SCHEDULE['Implement Angular dashboard'];
       const child2 = await this.taskRepo.save(
         this.taskRepo.create({
           title: 'Implement Angular dashboard',
           description: 'Frontend delivery',
           status: 'in-progress',
           priority: 'medium',
-          startDate: SeedService.DEMO_START,
-          dueDate: SeedService.DEMO_DUE,
-          budgetHours: 50,
-          actualHours: 20,
-          completionPercent: 35,
+          startDate: fe.startDate,
+          dueDate: fe.dueDate,
+          budgetHours: fe.budgetHours,
+          actualHours: fe.actualHours,
+          completionPercent: fe.completionPercent,
           assignedToId: users.memberId,
           createdById: users.managerId,
           organizationId,
@@ -235,17 +291,18 @@ export class SeedService {
         }),
       );
 
+      const uat = SeedService.TASK_SCHEDULE['UAT signoff'];
       await this.taskRepo.save(
         this.taskRepo.create({
           title: 'UAT signoff',
           description: 'Depends on FE + BE completion',
           status: 'pending',
           priority: 'low',
-          startDate: SeedService.DEMO_START,
-          dueDate: SeedService.DEMO_DUE,
-          budgetHours: 40,
-          actualHours: 0,
-          completionPercent: 0,
+          startDate: uat.startDate,
+          dueDate: uat.dueDate,
+          budgetHours: uat.budgetHours,
+          actualHours: uat.actualHours,
+          completionPercent: uat.completionPercent,
           assignedToId: users.viewerId,
           createdById: users.managerId,
           organizationId,
@@ -256,24 +313,16 @@ export class SeedService {
       return;
     }
 
-    const evmByTitle: Record<
-      string,
-      { budgetHours: number; actualHours: number; completionPercent: number }
-    > = {
-      'Build dashboard epic': { budgetHours: 120, actualHours: 64, completionPercent: 55 },
-      'Implement API contracts': { budgetHours: 40, actualHours: 44, completionPercent: 100 },
-      'Implement Angular dashboard': { budgetHours: 50, actualHours: 20, completionPercent: 35 },
-      'UAT signoff': { budgetHours: 40, actualHours: 0, completionPercent: 0 },
-    };
-
     for (const task of existing) {
-      task.startDate = SeedService.DEMO_START;
-      task.dueDate = SeedService.DEMO_DUE;
-      const metrics = evmByTitle[task.title];
-      if (metrics) {
-        task.budgetHours = metrics.budgetHours;
-        task.actualHours = metrics.actualHours;
-        task.completionPercent = metrics.completionPercent;
+      const schedule = SeedService.TASK_SCHEDULE[task.title];
+      if (schedule) {
+        task.startDate = schedule.startDate;
+        task.dueDate = schedule.dueDate;
+        task.budgetHours = schedule.budgetHours;
+        task.actualHours = schedule.actualHours;
+        task.completionPercent = schedule.completionPercent;
+        task.priority = schedule.priority;
+        task.status = schedule.status;
       } else if (!task.budgetHours) {
         task.budgetHours = 8;
       }

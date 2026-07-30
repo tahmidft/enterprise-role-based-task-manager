@@ -1,6 +1,10 @@
 <div class="page board-page">
   <p class="section-eyebrow">Kanban</p>
 
+  <p *ngIf="searchQuery() && !loading()" class="board-search-hint">
+    Showing results for “{{ searchQuery() }}”
+  </p>
+
   <div *ngIf="loading()" class="loading-wrap">
     <mat-spinner diameter="40"></mat-spinner>
   </div>
@@ -13,7 +17,14 @@
         <span class="column-count column-count--pending">{{ pending().length }}</span>
       </div>
       <div cdkDropList [cdkDropListData]="pending()" class="list" (cdkDropListDropped)="drop($event, 'pending')">
-        <article *ngFor="let t of pending()" cdkDrag class="kanban-card" [ngClass]="cardTone(t)">
+        <article
+          *ngFor="let t of pending(); trackBy: trackByTaskId"
+          cdkDrag
+          class="kanban-card"
+          [id]="'task-' + t.id"
+          [ngClass]="cardTone(t)"
+          [class.kanban-card--spotlight]="isSpotlight(t.id)"
+        >
           <div class="card-header-row">
             <h3 class="card-title">{{ t.title }}</h3>
             <button
@@ -44,7 +55,14 @@
         <span class="column-count column-count--progress">{{ inProgress().length }}</span>
       </div>
       <div cdkDropList [cdkDropListData]="inProgress()" class="list" (cdkDropListDropped)="drop($event, 'in-progress')">
-        <article *ngFor="let t of inProgress()" cdkDrag class="kanban-card" [ngClass]="cardTone(t)">
+        <article
+          *ngFor="let t of inProgress(); trackBy: trackByTaskId"
+          cdkDrag
+          class="kanban-card"
+          [id]="'task-' + t.id"
+          [ngClass]="cardTone(t)"
+          [class.kanban-card--spotlight]="isSpotlight(t.id)"
+        >
           <div class="card-header-row">
             <h3 class="card-title">{{ t.title }}</h3>
             <button
@@ -75,7 +93,14 @@
         <span class="column-count column-count--done">{{ done().length }}</span>
       </div>
       <div cdkDropList [cdkDropListData]="done()" class="list" (cdkDropListDropped)="drop($event, 'completed')">
-        <article *ngFor="let t of done()" cdkDrag class="kanban-card" [ngClass]="cardTone(t)">
+        <article
+          *ngFor="let t of done(); trackBy: trackByTaskId"
+          cdkDrag
+          class="kanban-card"
+          [id]="'task-' + t.id"
+          [ngClass]="cardTone(t)"
+          [class.kanban-card--spotlight]="isSpotlight(t.id)"
+        >
           <div class="card-header-row">
             <h3 class="card-title">{{ t.title }}</h3>
             <button

@@ -150,7 +150,12 @@ export class AuthService {
   }
 
   private async buildTokens(user: User) {
-    const payload = { sub: user.id, email: user.email };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role?.name,
+      organizationId: user.organizationId,
+    };
     const accessToken = this.jwtService.sign(payload);
 
     const rawRefreshToken = crypto.randomBytes(48).toString('hex');
