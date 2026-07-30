@@ -6,7 +6,7 @@ services:
     region: oregon
     branch: main
     buildCommand: NPM_CONFIG_PRODUCTION=false npm ci --legacy-peer-deps && npx nx build api
-    startCommand: node dist/api/main.js
+    startCommand: node api/dist/main.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
