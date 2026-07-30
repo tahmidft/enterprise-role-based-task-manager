@@ -1,5 +1,17 @@
 # Secure Task Management System with RBAC
 
+## Live demo
+
+| Surface | URL |
+|---|---|
+| Dashboard | https://nexus-pm-five.vercel.app |
+| API | https://enterprise-task-manager-api.onrender.com/api |
+| Health | https://enterprise-task-manager-api.onrender.com/api/health |
+
+Quick login on the live site: `owner@techcorp.com` / `password123` (same password for all demo roles).
+
+---
+
 A full-stack task management application with Role-Based Access Control (RBAC), JWT authentication, audit logging, project analytics (EVM/CPM), anomaly detection, and Angular Material UI.
 
 ---
