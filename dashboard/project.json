@@ -12,6 +12,7 @@
       "options": {
         "outputPath": "dist/dashboard",
         "browser": "dashboard/src/main.ts",
+        "index": "dashboard/src/index.html",
         "polyfills": ["zone.js"],
         "tsConfig": "dashboard/tsconfig.app.json",
         "assets": [

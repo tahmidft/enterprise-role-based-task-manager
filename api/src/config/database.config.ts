@@ -26,20 +26,29 @@ export const buildDatabaseConfig = (configService: ConfigService): TypeOrmModule
   const synchronize = configService.get<string>('DB_SYNCHRONIZE') === 'true';
   const logging = configService.get<string>('DB_LOGGING') === 'true';
   const ssl = configService.get<string>('DB_SSL') === 'true';
+  const databaseUrl = configService.get<string>('DATABASE_URL');
 
-  return {
+  const base: TypeOrmModuleOptions = {
     type: 'postgres',
-    host: configService.get<string>('DB_HOST', 'localhost'),
-    port: Number(configService.get<string>('DB_PORT', '5432')),
-    username: configService.get<string>('DB_USER', 'postgres'),
-    password: configService.get<string>('DB_PASSWORD', 'postgres'),
-    database: configService.get<string>('DB_NAME', 'task_manager'),
     entities,
     migrations: ['dist/api/src/database/migrations/*.js'],
     migrationsTableName: 'typeorm_migrations',
     synchronize,
     logging,
-    ssl: ssl ? { rejectUnauthorized: false } : false,
+    ssl: (ssl || Boolean(databaseUrl)) ? { rejectUnauthorized: false } : false,
+  };
+
+  if (databaseUrl) {
+    return { ...base, url: databaseUrl };
+  }
+
+  return {
+    ...base,
+    host: configService.get<string>('DB_HOST', 'localhost'),
+    port: Number(configService.get<string>('DB_PORT', '5432')),
+    username: configService.get<string>('DB_USER', 'postgres'),
+    password: configService.get<string>('DB_PASSWORD', 'postgres'),
+    database: configService.get<string>('DB_NAME', 'task_manager'),
   };
 };
 
