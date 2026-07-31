@@ -9,7 +9,7 @@
 | **Health** | [/api/health](https://enterprise-task-manager-api.onrender.com/api/health) |
 | **Try it** | Quick-login chips on the sign-in screen, or `owner@techcorp.com` / `password123` |
 
-> The GitHub repo name (`enterprise-role-based-task-manager`) is historical. The product is **Nexus PM** — pivoted from a permissions-focused task CRUD demo into a fuller PM surface: boards, WBS, CPM/Gantt, EVM, analytics, team, security alerts, and audit.
+> Pivoted from an earlier permissions-focused task CRUD demo into a fuller PM surface: boards, WBS, CPM/Gantt, EVM, analytics, team, security alerts, and audit.
 
 ---
 
