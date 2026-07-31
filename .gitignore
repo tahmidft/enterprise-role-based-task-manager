@@ -60,3 +60,5 @@ test-output
 .vscode/
 *.swp
 *.swo
+# Vercel local link metadata (do not commit)
+.vercel
