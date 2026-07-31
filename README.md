@@ -148,15 +148,15 @@ Password for all: `password123`
 
 Implemented in `api/src/projects/project-math.ts` and exposed as `GET /projects/:id/evm`.
 
-WBS parents **roll up** leaf `budgetHours`, `actualHours`, and earned value from children:
+WBS parents **roll up** leaf `budgetHours`, `actualHours`, and earned value from children (`project-math.ts` + `ProjectsService.getEvm`):
 
 ```
 EV_leaf = budgetHours × (completionPercent / 100)
 PV      = totalBudgetHours × (daysElapsed / totalProjectDays)
 AC      = Σ actualHours
-SPI     = EV / PV
-CPI     = EV / AC
-EAC     = AC + (PV − EV) / CPI     when CPI > 0
+SPI     = EV / PV          (1 when PV = 0)
+CPI     = EV / AC          (1 when AC = 0)
+EAC     = BAC / CPI        (BAC = totalBudgetHours; when CPI > 0)
 ```
 
 Dashboard cards map SPI/CPI into status pills (e.g. SPI 0.58 → **Behind**, CPI 0.90 → **At risk**). Roles below Manager see placeholders (`--`).
@@ -295,6 +295,17 @@ Key env (see `.env.example` / `render.yaml`):
 Free Render tiers cold-start in ~30–60s after idle; wake `/api/health` first if login hangs.
 
 `main` is protected by a GitHub **ruleset** (PR required, no force-push, no branch deletion).
+
+### Demo / portfolio caveats
+
+| Area | Notes |
+|---|---|
+| Team invite / edit | UI exists; there is no `/users` CRUD API yet — roster is inferred from assignees |
+| Security “Simulate alert” | Client-only mock; real alerts come from audit-session scoring on the API |
+| Settings (theme, defaults, aging days) | Mostly `localStorage`; server aging uses env vars |
+| JWT refresh | Backend rotates refresh tokens; the dashboard does not auto-refresh on 401 yet |
+| WebSockets / task comments | Gateway and comments API exist; dashboard does not surface live sockets or a comments UI |
+| Email | Logs a stub unless `RESEND_API_KEY` is set |
 
 ---
 
