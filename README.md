@@ -1,63 +1,250 @@
 # Nexus PM
 
-Enterprise project management with role-based access, Kanban boards, critical-path scheduling, and full audit trails.
+**Mission-critical project intelligence** — a multi-tenant project workspace with role-based access, Kanban delivery, earned-value metrics, critical-path scheduling, and a compliance-grade audit trail.
 
 | | |
 |---|---|
 | **Live app** | [nexus-pm-five.vercel.app](https://nexus-pm-five.vercel.app) |
 | **API** | [enterprise-task-manager-api.onrender.com/api](https://enterprise-task-manager-api.onrender.com/api) |
 | **Health** | [/api/health](https://enterprise-task-manager-api.onrender.com/api/health) |
-| **Demo login** | `owner@techcorp.com` / `password123` |
+| **Try it** | Quick-login chips on the sign-in screen, or `owner@techcorp.com` / `password123` |
 
-> **Note:** The repository name (`enterprise-role-based-task-manager`) is historical. The product is **Nexus PM** — a pivot from a permissions-focused task CRUD demo into a fuller PM workspace (boards, planning math, team, security, and analytics).
-
----
-
-## What it is
-
-Nexus PM is a multi-tenant project workspace for teams that need:
-
-- **RBAC** — Owner, Admin, Manager, Member, and Viewer with permission-scoped APIs
-- **Kanban board** — drag-and-drop status columns, filters, and task search
-- **Planning** — WBS-aware tasks, Critical Path Method (CPM), Gantt-style timeline, and Earned Value (EVM) metrics
-- **Governance** — organization-scoped audit logs, JWT auth with refresh rotation, and owner security alerts
-- **Ops surface** — dashboard KPIs, analytics, team directory, and settings
-
-The UI is Angular Material; the API is NestJS + TypeORM on PostgreSQL, managed as an NX monorepo.
+> The GitHub repo name (`enterprise-role-based-task-manager`) is historical. The product is **Nexus PM** — pivoted from a permissions-focused task CRUD demo into a fuller PM surface: boards, WBS, CPM/Gantt, EVM, analytics, team, security alerts, and audit.
 
 ---
 
 ## Screenshots
 
-| Login | Owner dashboard | Viewer dashboard |
-|---|---|---|
-| ![Login](docs/login.png) | ![Owner Dashboard](docs/owner-dash.png) | ![Viewer Dashboard](docs/viewer-dash.png) |
+Captured from the live demo (Owner / Viewer).
+
+| Login — demo role chips | Owner dashboard — EVM + CPM + WBS |
+|---|---|
+| ![Login](docs/login.png) | ![Owner dashboard](docs/dashboard-owner.png) |
+
+| Critical Path (CPM) Gantt | Viewer dashboard — scoped data |
+|---|---|
+| ![CPM Gantt](docs/cpm-gantt.png) | ![Viewer dashboard](docs/dashboard-viewer.png) |
+
+| Kanban board | Analytics — Chart.js |
+|---|---|
+| ![Board](docs/board-kanban.png) | ![Analytics](docs/analytics.png) |
+
+| Audit log | Team directory |
+|---|---|
+| ![Audit](docs/audit-log.png) | ![Team](docs/team.png) |
+
+| Security alerts (Owner) |
+|---|
+| ![Security](docs/security.png) |
+
+**RBAC in the UI:** Owner sees Team + Security and live EVM numbers. Viewer loses those nav items, sees only assigned work (e.g. one board card), and EVM cards render as `--`.
 
 ---
 
-## Stack
+## What you get
 
-| Layer | Choice |
+| Capability | What it does |
 |---|---|
-| Frontend | Angular 20, Angular Material / CDK |
-| Backend | NestJS, Passport JWT, bcrypt |
-| Data | PostgreSQL, TypeORM (migrations) |
-| Monorepo | NX |
-| Production | Vercel (dashboard) · Render (API) · Neon (Postgres) |
+| **Earned Value (EVM)** | PV, EV, AC, SPI, CPI, EAC cards on the dashboard with tone pills (Behind / At risk / Over baseline) |
+| **Critical Path (CPM)** | Interactive Gantt: duration vs float modes, critical-only toggle, dependency edges, today line, export/fullscreen |
+| **Work Breakdown Structure** | Nested tree with drag reorder, progress, blockers, overdue badges, budget vs actual hours |
+| **Kanban board** | Pending → In progress → Completed columns, priority chips, filters, task search |
+| **Analytics** | KPI strip + Chart.js donut (status), bars (priority), 30-day audit activity line |
+| **Audit log** | Searchable, date-filtered, action-chip filters; expandable metadata; copy/export |
+| **Team** | Org member cards, role filters, invite (permission-gated) |
+| **Security** | Owner-only HIGH-risk session alerts; demo “Simulate alert” |
+| **Auth** | JWT access (15m) + hashed refresh tokens with rotation |
+
+Demo tenant: **TechCorp Inc** with a seeded **Website Revamp** style project (API contracts → Angular dashboard → UAT signoff).
 
 ---
 
-## App surfaces
+## Architecture
 
-| Route | Purpose |
+```mermaid
+flowchart LR
+  subgraph Client
+    A[Angular 20 · Nexus PM<br/>Vercel]
+  end
+  subgraph API
+    B[NestJS · JWT · Guards<br/>Render]
+    C[TypeORM]
+  end
+  subgraph Data
+    D[(Neon Postgres)]
+  end
+  A -->|HTTPS /api + env.js| B
+  B --> C --> D
+```
+
+```
+├── api/            NestJS API (port 3333)
+├── dashboard/      Angular app — Nexus PM (port 4200)
+├── data/           Shared TypeScript types
+├── auth/           Shared auth helpers
+├── docs/           README screenshots
+├── docker-compose.yml
+├── render.yaml
+└── vercel.json
+```
+
+**Runtime config:** the dashboard loads `/env.js` so production can point at the Render API without rebuilding:
+
+```js
+window.__env = { API_URL: 'https://enterprise-task-manager-api.onrender.com/api' };
+```
+
+---
+
+## Authorization model
+
+```mermaid
+flowchart TD
+  L[Login] --> T[Issue access JWT + refresh cookie/token]
+  T --> R[JWT strategy loads user + role.permissions]
+  R --> G{PermissionsGuard}
+  G -->|deny| F[403 + required permission list]
+  G -->|allow| S[Service: org-scoped query]
+  S --> A[AuditService.log action + metadata]
+```
+
+### Roles (seed)
+
+```
+Owner → Admin → Manager → Member → Viewer
+```
+
+| Permission | Owner | Admin | Manager | Member | Viewer |
+|---|---|---|---|---|---|
+| `tasks:create` | ✓ | ✓ | ✓ | ✓ | |
+| `tasks:read` | ✓ | ✓ | ✓ | own* | assigned |
+| `tasks:update` | ✓ | ✓ | ✓ | own* | |
+| `tasks:delete` | ✓ | ✓ | ✓ | | |
+| `users:create` | ✓ | ✓ | | | |
+| `users:read` | ✓ | ✓ | ✓ | | ✓ |
+| `users:update` | ✓ | ✓ | | | |
+| `users:delete` | ✓ | | | | |
+| `audit:read` | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+\*Member task writes are scoped to work they own/are assigned; Viewer is read-only on assigned tasks. All queries stay inside the user’s `organizationId`.
+
+### Demo accounts
+
+Password for all: `password123`
+
+| Role | Email |
 |---|---|
-| `/dashboard` | KPIs, project overview, planning widgets |
-| `/board` | Kanban board with filters and search |
-| `/analytics` | Org / project analytics |
-| `/audit` | Permission-gated audit trail |
-| `/security` | Owner security alerts |
-| `/team` | Team directory (owner / admin / manager) |
-| `/settings` | Account and workspace settings |
+| Owner | `owner@techcorp.com` |
+| Admin | `admin@techcorp.com` |
+| Manager | `manager@techcorp.com` |
+| Member | `member@techcorp.com` |
+| Viewer | `viewer@techcorp.com` |
+
+---
+
+## Planning mechanisms
+
+### Earned Value Management
+
+Implemented in `api/src/projects/project-math.ts` and exposed as `GET /projects/:id/evm`.
+
+WBS parents **roll up** leaf `budgetHours`, `actualHours`, and earned value from children:
+
+```
+EV_leaf = budgetHours × (completionPercent / 100)
+PV      = totalBudgetHours × (daysElapsed / totalProjectDays)
+AC      = Σ actualHours
+SPI     = EV / PV
+CPI     = EV / AC
+EAC     = AC + (PV − EV) / CPI     when CPI > 0
+```
+
+Dashboard cards map SPI/CPI into status pills (e.g. SPI 0.58 → **Behind**, CPI 0.90 → **At risk**). Roles below Manager see placeholders (`--`).
+
+### Critical Path Method
+
+Same module, `GET /projects/:id/critical-path`. WBS parents are skipped; only leaf/work tasks are scheduled.
+
+```mermaid
+flowchart LR
+  D[Dependencies] --> K[Kahn topological sort]
+  K -->|cycle| E[HTTP 400]
+  K --> F[Forward pass ES/EF]
+  F --> B[Backward pass LS/LF]
+  B --> Z[Float = LS − ES]
+  Z --> C[float ≈ 0 → critical]
+```
+
+- **Duration** = calendar days between `startDate` and `dueDate`, else fallback to `budgetHours` as day-counts  
+- UI: `app-cpm-gantt-chart` — zoom, duration/float modes, critical filter, dependency arrows, today marker  
+- Critical edges only connect critical → critical successors
+
+### Priority aging
+
+Nightly cron (`PriorityAgingService`): pending **low** tasks escalate to **medium** after `LOW_TO_MEDIUM_DAYS` (default 5); **medium** → **high** after additional `MEDIUM_TO_HIGH_DAYS` (default 3). Each escalation is audited as `task:priority-escalated`.
+
+### Analytics charts
+
+`GET /analytics` feeds Chart.js on `/analytics`:
+
+1. **Tasks by Status** — doughnut  
+2. **Tasks by Priority** — bar  
+3. **Audit Activity (30 days)** — line  
+
+---
+
+## Data model
+
+```mermaid
+erDiagram
+  ORGANIZATIONS ||--o{ USERS : has
+  ORGANIZATIONS ||--o{ PROJECTS : has
+  ROLES ||--o{ USERS : assigns
+  ROLES }o--o{ PERMISSIONS : grants
+  PROJECTS ||--o{ TASKS : contains
+  TASKS ||--o{ TASKS : parent_child
+  TASKS }o--o{ TASKS : depends_on
+  USERS ||--o{ TASKS : assigned
+  USERS ||--o{ AUDIT_LOGS : performs
+  ORGANIZATIONS ||--o{ SECURITY_ALERTS : tracks
+  TASKS ||--o{ COMMENTS : has
+```
+
+Core task fields: `status`, `priority`, `startDate`, `dueDate`, `budgetHours`, `actualHours`, `completionPercent`, `parentTaskId`, project + org FKs.
+
+---
+
+## API surface
+
+Base: `http://localhost:3333/api` (prod: Render URL above).  
+Authenticated routes: `Authorization: Bearer <access_token>`.
+
+```bash
+# Auth
+POST /auth/login | /auth/register | /auth/refresh | /auth/logout
+
+# Tasks & WBS
+GET    /tasks
+GET    /tasks?tree=true
+GET|PUT|DELETE /tasks/:id
+POST   /tasks
+GET|POST /tasks/:taskId/comments
+
+# Planning
+GET /projects/:id/evm
+GET /projects/:id/critical-path
+GET /projects/:id/resource-leveling
+
+# Governance
+GET /audit-log
+GET /analytics
+GET /security/alerts                  # owner
+PATCH /security/alerts/:id/reviewed
+
+# Bootstrap
+POST /seed
+GET  /health
+```
 
 ---
 
@@ -69,162 +256,45 @@ The UI is Angular Material; the API is NestJS + TypeORM on PostgreSQL, managed a
 npm install
 docker compose up -d postgres
 cp .env.example .env
-
 npm run migration:run
 
-# API → http://localhost:3333/api
-npx nx serve api
-
-# Seed (separate terminal)
+npx nx serve api          # http://localhost:3333/api
 curl -X POST http://localhost:3333/api/seed
-
-# Dashboard → http://localhost:4200
-npx nx serve dashboard
-```
-
-### Demo accounts
-
-Same password for all roles: `password123`
-
-| Role | Email | Access highlight |
-|---|---|---|
-| Owner | `owner@techcorp.com` | Full access + user management + security |
-| Admin | `admin@techcorp.com` | Task CRUD, users, audit |
-| Manager | `manager@techcorp.com` | Tasks + users:read + audit |
-| Member | `member@techcorp.com` | Create / update own assigned tasks |
-| Viewer | `viewer@techcorp.com` | Read assigned tasks only |
-
----
-
-## RBAC
-
-```
-Owner → Admin → Manager → Member → Viewer
-```
-
-| Permission | Owner | Admin | Manager | Member | Viewer |
-|---|---|---|---|---|---|
-| `tasks:create` | ✓ | ✓ | ✓ | ✓ | |
-| `tasks:read` | ✓ | ✓ | ✓ | own | assigned |
-| `tasks:update` | ✓ | ✓ | ✓ | own | |
-| `tasks:delete` | ✓ | ✓ | ✓ | | |
-| `users:create` | ✓ | ✓ | | | |
-| `users:read` | ✓ | ✓ | ✓ | | limited |
-| `users:update` | ✓ | ✓ | | | |
-| `users:delete` | ✓ | | | | |
-| `audit:read` | ✓ | ✓ | ✓ | ✓ | ✓ |
-
-Flow: login issues a JWT → strategy loads role + permissions → `PermissionsGuard` enforces route metadata → successful actions are audit-logged → queries stay org-scoped.
-
----
-
-## API (local base: `http://localhost:3333/api`)
-
-Authenticated routes expect `Authorization: Bearer <access_token>`.
-
-```bash
-# Auth
-POST /auth/login
-POST /auth/register
-POST /auth/refresh
-POST /auth/logout
-
-# Tasks
-GET    /tasks
-GET    /tasks?tree=true          # WBS tree
-GET    /tasks/:id
-POST   /tasks
-PUT    /tasks/:id
-DELETE /tasks/:id
-GET|POST /tasks/:taskId/comments
-
-# Projects / planning
-GET /projects/:id/evm
-GET /projects/:id/critical-path
-GET /projects/:id/resource-leveling
-
-# Security (owner)
-GET   /security/alerts
-PATCH /security/alerts/:id/reviewed
-
-# Analytics & audit
-GET /analytics
-GET /audit-log
+npx nx serve dashboard    # http://localhost:4200
 ```
 
 ### Smoke test
 
 ```bash
-curl -X POST http://localhost:3333/api/seed
-
 TOKEN=$(curl -s -X POST http://localhost:3333/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"owner@techcorp.com","password":"password123"}' \
   | jq -r '.access_token')
 
-curl -s http://localhost:3333/api/tasks -H "Authorization: Bearer $TOKEN" | jq
+curl -s http://localhost:3333/api/tasks -H "Authorization: Bearer $TOKEN" | jq 'length'
 curl -s http://localhost:3333/api/audit-log -H "Authorization: Bearer $TOKEN" | jq 'length'
 ```
 
 ---
 
-## Planning algorithms
-
-### Earned Value (EVM)
-
-```
-PV  = Σ(budgetHours) × (daysElapsed / totalProjectDays)
-EV  = Σ(budgetHours × completionPercent / 100)
-AC  = Σ(actualHours)
-SPI = EV / PV
-CPI = EV / AC
-EAC = AC + (PV - EV) / CPI   when CPI > 0
-```
-
-Subtasks roll up through WBS parents before project aggregation.
-
-### Critical Path (CPM)
-
-1. Build the dependency graph  
-2. Kahn topological sort (HTTP 400 on cycle)  
-3. Forward pass → earliest start / finish  
-4. Backward pass → latest start / finish  
-5. Float = `LS - ES`; zero float = critical path  
-
----
-
-## Production layout
+## Production
 
 | Piece | Host |
 |---|---|
 | Dashboard | Vercel project **`nexus-pm`** |
-| API | Render web service |
-| Database | Neon Postgres (`DATABASE_URL`) |
+| API | Render Node web service |
+| Database | Neon Postgres via `DATABASE_URL` |
 
-Useful env vars (see `.env.example` and `render.yaml`):
+Key env (see `.env.example` / `render.yaml`):
 
-- `DATABASE_URL` or `DB_*` — Postgres
+- `DATABASE_URL` or `DB_*`, `DB_SSL`, `DB_SYNCHRONIZE`
 - `JWT_SECRET`, `JWT_EXPIRATION`, `REFRESH_TOKEN_TTL_DAYS`
-- `CORS_ORIGIN` — comma-separated allowed origins (include the Vercel URL)
-- `DB_SYNCHRONIZE` — `false` + migrations for durable prod; demo may use `true` on first boot
-- Dashboard runtime API URL via `dashboard/public/env.js` (`window.__ENV__.API_URL`)
+- `CORS_ORIGIN` — include the Vercel origin
+- Start command: `node api/dist/main.js`
 
-Render start command: `node api/dist/main.js`  
-Cold starts on free Render can take ~30–60s on the first request after idle.
+Free Render tiers cold-start in ~30–60s after idle; wake `/api/health` first if login hangs.
 
----
-
-## Repo layout
-
-```
-├── api/                 NestJS API (port 3333)
-├── dashboard/           Angular app — Nexus PM (port 4200)
-├── data/                Shared TypeScript types
-├── auth/                Shared auth helpers
-├── docker-compose.yml   Local Postgres
-├── render.yaml          API deploy blueprint
-└── vercel.json          SPA rewrites / env.js caching
-```
+`main` is protected by a GitHub **ruleset** (PR required, no force-push, no branch deletion).
 
 ---
 
@@ -232,4 +302,4 @@ Cold starts on free Render can take ~30–60s on the first request after idle.
 
 **Farhan Tahmid** — [GitHub](https://github.com/tahmidft)
 
-Demo / portfolio project. Not a production SLA offering.
+Portfolio / demo project — not a production SLA offering.
